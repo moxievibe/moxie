@@ -223,16 +223,18 @@ export const AdminModal: React.FC = () => {
             <Shield className="w-5 h-5 text-[#4ade80]" />
             <div>
               <h2 id="admin-title" className="font-display font-extrabold uppercase text-lg sm:text-xl text-white">
-                Panel de Control MOXIE
+                {isAdminAuthenticated ? 'Panel de Control MOXIE' : 'MOXIE'}
               </h2>
-              <p className="text-xs font-mono text-neutral-400">
-                Inventario, Control de Stock, Precios en USD, Tasa Bs y Registro de Ingresos/Gastos
-              </p>
+              {isAdminAuthenticated && (
+                <p className="text-xs text-neutral-400">
+                  Inventario, Control de Stock, Precios en USD, Tasa Bs y Registro de Ingresos/Gastos
+                </p>
+              )}
             </div>
           </div>
           <button
             onClick={() => setIsAdminModalOpen(false)}
-            aria-label="Cerrar panel de administración"
+            aria-label="Cerrar"
             className="p-1.5 text-neutral-400 hover:text-white rounded-md hover:bg-neutral-900 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -241,35 +243,30 @@ export const AdminModal: React.FC = () => {
 
         {/* Protection Screen if not authenticated */}
         {!isAdminAuthenticated ? (
-          <div className="p-8 sm:p-12 text-center max-w-md mx-auto">
-            <div className="w-14 h-14 rounded-full bg-[#003314] text-[#4ade80] flex items-center justify-center mx-auto mb-4 border border-[#005220]">
+          <div className="p-8 sm:p-14 text-center max-w-sm mx-auto">
+            <div className="w-14 h-14 rounded-full bg-[#003314] text-[#4ade80] flex items-center justify-center mx-auto mb-6 border border-[#005220]">
               <Lock className="w-7 h-7" />
             </div>
-            <h3 className="font-display font-extrabold uppercase text-xl text-white mb-2">
-              Acceso Restringido MOXIE
+            <h3 className="font-display font-black uppercase text-xl text-white mb-6 tracking-wide">
+              Acceso Restringido
             </h3>
-            <p className="text-xs font-mono text-neutral-400 mb-6">
-              Ingresa la contraseña para acceder a la gestión de inventario, finanzas y precios.
-            </p>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <input
                 type="password"
-                placeholder="Contraseña (por defecto: moxie)"
+                placeholder=""
+                aria-label="Contraseña"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full px-4 py-2.5 text-xs font-mono bg-neutral-900 border border-neutral-800 rounded-md text-white text-center tracking-widest focus:outline-hidden focus:border-[#005220]"
+                className="w-full px-4 py-3 text-sm bg-neutral-900 border border-neutral-800 rounded-md text-white text-center tracking-[0.3em] focus:outline-hidden focus:border-[#005220] transition-colors"
                 autoFocus
               />
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 text-xs font-mono font-bold uppercase tracking-wider text-black bg-white hover:bg-neutral-200 transition-colors rounded-md cursor-pointer"
+                className="w-full py-3 px-4 text-xs font-bold uppercase tracking-wider text-black bg-white hover:bg-neutral-200 active:scale-98 transition-all rounded-md cursor-pointer"
               >
-                Ingresar al Panel
+                Entrar
               </button>
-              <p className="text-[11px] font-mono text-neutral-500">
-                Contraseña sugerida: <strong>moxie</strong>
-              </p>
             </form>
           </div>
         ) : (

@@ -249,9 +249,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Admin Login
   const loginAdmin = (password: string): boolean => {
-    if (password === settings.adminPassword || password === 'moxie' || password === 'moxie2026') {
+    if (password === 'mooxiiee19*' || password === settings.adminPassword) {
       setIsAdminAuthenticated(true);
-      showToast('Acceso al Panel de Administración concedido', 'success');
+      showToast('Acceso concedido', 'success');
       return true;
     }
     showToast('Contraseña incorrecta', 'error');

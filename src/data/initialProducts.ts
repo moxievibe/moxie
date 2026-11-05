@@ -16,7 +16,7 @@ export const INITIAL_SETTINGS: StoreSettings = {
     { id: 'zone-4', name: 'San Diego (El Morro, Valle Verde, Tulipán)', costUSD: 4.0 },
     { id: 'zone-5', name: 'Los Guayos / Paraparal / Guacara', costUSD: 4.5 },
   ],
-  adminPassword: 'moxie',
+  adminPassword: 'mooxiiee19*',
   announcement: '',
   showAnnouncement: false,
 };
