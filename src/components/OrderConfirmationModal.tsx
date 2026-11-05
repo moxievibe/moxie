@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Printer, ArrowRight, X, MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { MoxieLogo } from './MoxieLogo';
 
 export const OrderConfirmationModal: React.FC = () => {
   const {
@@ -39,12 +40,10 @@ export const OrderConfirmationModal: React.FC = () => {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Success Icon */}
+        {/* Success Icon with Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#003314] text-[#4ade80] mb-3 border border-[#005220]">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h2 id="confirmation-modal-title" className="font-display font-extrabold uppercase text-2xl text-white">
+          <MoxieLogo variant="badge" className="w-16 h-16 mx-auto mb-3 shadow-lg" />
+          <h2 id="confirmation-modal-title" className="font-display font-extrabold uppercase text-xl sm:text-2xl text-white">
             ¡Pedido Registrado con Éxito!
           </h2>
           <p className="text-xs font-mono text-neutral-400 mt-1">

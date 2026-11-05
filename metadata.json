@@ -1,6 +1,6 @@
 {
-  "name": "Aura Store - Tienda Online Profesional",
-  "description": "Plataforma completa de comercio electrónico para tiendas y negocios: catálogo interactivo, pedidos por WhatsApp, bolsa de compras, gestión de productos y personalización de marca.",
+  "name": "MOXIE - Streetwear & Sportswear",
+  "description": "Tienda oficial de ropa deportiva y streetwear MOXIE en Valencia, Venezuela. Catálogo con doble moneda (USD y Bs), pedidos directos a WhatsApp, pick up en Tocuyito y envíos nacionales por MRW y Tealca.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

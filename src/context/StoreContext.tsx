@@ -7,8 +7,9 @@ import {
   OrderDelivery,
   OrderCustomer,
   DeliveryZone,
+  FinancialRecord,
 } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_SETTINGS } from '../data/initialProducts';
+import { INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_FINANCIAL_RECORDS } from '../data/initialProducts';
 
 interface Toast {
   id: string;
@@ -22,9 +23,23 @@ interface StoreContextType {
   products: Product[];
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
+  updateProductPrice: (id: string, newPriceUSD: number) => void;
+  updateProductStockUnits: (id: string, units: number) => void;
   deleteProduct: (id: string) => void;
   toggleProductStock: (id: string) => void;
   resetToDefaults: () => void;
+
+  // Inventory Totals
+  totalInventoryUnits: number;
+  totalInventoryValuationUSD: number;
+
+  // Finances (Ingresos y Gastos)
+  financialRecords: FinancialRecord[];
+  addFinancialRecord: (record: Omit<FinancialRecord, 'id'>) => void;
+  deleteFinancialRecord: (id: string) => void;
+  totalIncomeUSD: number;
+  totalExpensesUSD: number;
+  netProfitUSD: number;
 
   // Categories
   categories: string[];
@@ -91,11 +106,12 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  SETTINGS: 'moxie_settings_v2',
-  PRODUCTS: 'moxie_products_v2',
-  CART: 'moxie_cart_v2',
-  ORDERS: 'moxie_orders_v2',
-  ADMIN_AUTH: 'moxie_admin_auth_v2',
+  SETTINGS: 'moxie_settings_v3',
+  PRODUCTS: 'moxie_products_v3',
+  CART: 'moxie_cart_v3',
+  ORDERS: 'moxie_orders_v3',
+  FINANCES: 'moxie_finances_v3',
+  ADMIN_AUTH: 'moxie_admin_auth_v3',
 };
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -116,6 +132,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
     } catch {
       return INITIAL_PRODUCTS;
+    }
+  });
+
+  // Financial Records (Ingresos y Gastos)
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.FINANCES);
+      return saved ? JSON.parse(saved) : INITIAL_FINANCIAL_RECORDS;
+    } catch {
+      return INITIAL_FINANCIAL_RECORDS;
     }
   });
 
@@ -177,7 +203,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     } catch {
-      // storage quota or error
+      // ignore
     }
   }, [settings]);
 
@@ -185,15 +211,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
     } catch {
-      // storage quota or error
+      // ignore
     }
   }, [products]);
 
   useEffect(() => {
     try {
+      localStorage.setItem(STORAGE_KEYS.FINANCES, JSON.stringify(financialRecords));
+    } catch {
+      // ignore
+    }
+  }, [financialRecords]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
     } catch {
-      // storage quota or error
+      // ignore
     }
   }, [cart]);
 
@@ -201,7 +235,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
     } catch {
-      // storage quota or error
+      // ignore
     }
   }, [orders]);
 
@@ -209,7 +243,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, isAdminAuthenticated ? 'true' : 'false');
     } catch {
-      // storage quota or error
+      // ignore
     }
   }, [isAdminAuthenticated]);
 
@@ -263,6 +297,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const product: Product = {
       ...newProd,
       id: `moxie-prod-${Date.now()}`,
+      stockUnits: newProd.stockUnits !== undefined ? newProd.stockUnits : 20,
     };
     setProducts((prev) => [product, ...prev]);
     showToast(`"${product.name}" añadido al catálogo`);
@@ -271,6 +306,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateProduct = (id: string, patch: Partial<Product>) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
     showToast('Prenda actualizada correctamente');
+  };
+
+  const updateProductPrice = (id: string, newPriceUSD: number) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, priceUSD: Number(newPriceUSD) || 1 } : p))
+    );
+    showToast('Precio actualizado correctamente');
+  };
+
+  const updateProductStockUnits = (id: string, units: number) => {
+    const safeUnits = Math.max(0, Math.floor(units));
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, stockUnits: safeUnits, inStock: safeUnits > 0 ? p.inStock : false } : p
+      )
+    );
+    showToast('Unidades de inventario actualizadas');
   };
 
   const toggleProductStock = (id: string) => {
@@ -294,9 +346,45 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast('Producto eliminado del catálogo');
   };
 
+  // Finances Operations
+  const addFinancialRecord = (rec: Omit<FinancialRecord, 'id'>) => {
+    const newRecord: FinancialRecord = {
+      ...rec,
+      id: `fin-${Date.now()}`,
+    };
+    setFinancialRecords((prev) => [newRecord, ...prev]);
+    showToast(
+      `${rec.type === 'ingreso' ? 'Ingreso' : 'Gasto'} de $${rec.amountUSD} registrado`,
+      'success'
+    );
+  };
+
+  const deleteFinancialRecord = (id: string) => {
+    setFinancialRecords((prev) => prev.filter((r) => r.id !== id));
+    showToast('Movimiento financiero eliminado');
+  };
+
+  const totalIncomeUSD = financialRecords
+    .filter((r) => r.type === 'ingreso')
+    .reduce((sum, r) => sum + r.amountUSD, 0);
+
+  const totalExpensesUSD = financialRecords
+    .filter((r) => r.type === 'gasto')
+    .reduce((sum, r) => sum + r.amountUSD, 0);
+
+  const netProfitUSD = totalIncomeUSD - totalExpensesUSD;
+
+  // Inventory stats
+  const totalInventoryUnits = products.reduce((sum, p) => sum + (p.stockUnits || 0), 0);
+  const totalInventoryValuationUSD = products.reduce(
+    (sum, p) => sum + p.priceUSD * (p.stockUnits || 0),
+    0
+  );
+
   const resetToDefaults = () => {
     setSettings(INITIAL_SETTINGS);
     setProducts(INITIAL_PRODUCTS);
+    setFinancialRecords(INITIAL_FINANCIAL_RECORDS);
     showToast('Datos de MOXIE restaurados a la configuración inicial');
   };
 
@@ -456,6 +544,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+
+    // Automatically record income in store finances
+    addFinancialRecord({
+      type: 'ingreso',
+      description: `Pedido ${newOrder.id} - ${customer.name}`,
+      amountUSD: totalUSD,
+      category: 'Ventas de Ropa',
+      date: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }),
+    });
+
     clearCart();
     setActiveOrderConfirmation(newOrder);
     setIsCheckoutOpen(false);
@@ -473,7 +571,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const totalBs = totalUSD * exchangeRateBs;
 
     const itemsText = cart
-      .map((item, idx) => {
+      .map((item) => {
         const variants = Object.entries(item.selectedVariants)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
@@ -531,9 +629,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         products,
         addProduct,
         updateProduct,
+        updateProductPrice,
+        updateProductStockUnits,
         deleteProduct,
         toggleProductStock,
         resetToDefaults,
+        totalInventoryUnits,
+        totalInventoryValuationUSD,
+        financialRecords,
+        addFinancialRecord,
+        deleteFinancialRecord,
+        totalIncomeUSD,
+        totalExpensesUSD,
+        netProfitUSD,
         categories: settings.categories,
         addCategory,
         deleteCategory,

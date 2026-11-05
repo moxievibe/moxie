@@ -1,6 +1,7 @@
 import React from 'react';
-import { ShoppingBag, Shield, ExternalLink, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Shield } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { MoxieLogo } from './MoxieLogo';
 
 // Clean SVG icons for Instagram and TikTok
 const InstagramIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
@@ -41,119 +42,92 @@ export const Navbar: React.FC = () => {
   } = useStore();
 
   return (
-    <>
-      {/* Top Streetwear Notice Bar & Daily Exchange Rate */}
-      {settings.showAnnouncement && settings.announcement && (
-        <aside
-          aria-label="Aviso de la marca"
-          className="bg-[#003314] text-white text-[11px] font-mono tracking-wider py-1.5 px-4 text-center flex items-center justify-center gap-3 border-b border-black/40"
-        >
-          <span className="font-bold tracking-widest">MOXIE</span>
-          <span aria-hidden="true">/</span>
-          <span>{settings.announcement}</span>
-          <span aria-hidden="true" className="hidden sm:inline">/</span>
-          <span className="hidden sm:inline bg-black/40 px-2 py-0.5 rounded text-[10px] text-white/90 font-medium">
-            Tasa BCV: 1$ = {exchangeRateBs} Bs
-          </span>
-        </aside>
-      )}
+    <header className="sticky top-0 z-40 bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
+        {/* Zone 1: Official MOXIE Logo with star in the 'o' and chunky typography */}
+        <a href="#" className="hover:opacity-90 transition-opacity">
+          <MoxieLogo variant="header" />
+        </a>
 
-      {/* Main Streetwear Header */}
-      <header className="sticky top-0 z-40 bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
-          {/* Zone 1: Wordmark in bold display font */}
-          <div className="flex items-center gap-4">
+        {/* Zone 2: Navigation Links + Direct Social Icons to @moxievibe */}
+        <nav className="hidden md:flex items-center gap-8 text-xs font-black tracking-widest uppercase text-neutral-300">
+          <a
+            href="#"
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
+          >
+            Inicio
+          </a>
+          <a
+            href="#catalogo"
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
+          >
+            Catálogo
+          </a>
+          <a
+            href="#envios"
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
+          >
+            Envíos
+          </a>
+
+          {/* Direct Social Media Icons: Instagram & TikTok @moxievibe */}
+          <div className="flex items-center gap-3 pl-2 border-l border-neutral-800">
             <a
-              href="#"
-              className="text-3xl sm:text-4xl font-extrabold tracking-tighter text-white hover:text-neutral-200 transition-colors whitespace-nowrap uppercase font-display"
+              href="https://instagram.com/moxievibe"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Instagram @moxievibe"
+              className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors"
+              aria-label="Instagram de MOXIE @moxievibe"
             >
-              {settings.storeName}
+              <InstagramIcon className="w-4 h-4" />
             </a>
-            <span className="hidden xl:inline-block text-[10px] tracking-widest uppercase font-mono text-[#4ade80] bg-[#003314]/80 px-2 py-0.5 rounded border border-[#005220]">
-              STREETWEAR
+
+            <a
+              href="https://tiktok.com/@moxievibe"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="TikTok @moxievibe"
+              className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors"
+              aria-label="TikTok de MOXIE @moxievibe"
+            >
+              <TikTokIcon className="w-4 h-4" />
+            </a>
+          </div>
+        </nav>
+
+        {/* Zone 3: Currency Ticker + Admin + Bag */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Live Exchange Rate */}
+          <div className="hidden sm:flex flex-col text-right text-[11px] font-mono leading-tight pr-2">
+            <span className="text-neutral-500">TASA BCV</span>
+            <span className="font-bold text-neutral-200 tabular-nums">1$ = {exchangeRateBs} Bs</span>
+          </div>
+
+          {/* Admin Dashboard Trigger */}
+          <button
+            onClick={() => setIsAdminModalOpen(true)}
+            title="Panel de Administración (Stock, Precios, Finanzas e Inventario)"
+            className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-mono font-medium text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 rounded-md hover:border-neutral-700 transition-colors cursor-pointer"
+          >
+            <Shield className="w-3.5 h-3.5 text-[#4ade80]" />
+            <span className="hidden sm:inline">Admin</span>
+          </button>
+
+          {/* Cart Button */}
+          <button
+            onClick={() => setIsCartOpen(true)}
+            aria-label={`Bolsa de compras con ${cartCount} prendas`}
+            className="relative inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold tracking-wider uppercase text-black bg-white hover:bg-neutral-200 active:scale-98 transition-all cursor-pointer rounded-md shadow-xs"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span className="hidden sm:inline">Bolsa</span>
+            <span className="inline-flex items-center justify-center bg-[#003314] text-white text-[10px] font-bold rounded-full w-5 h-5 tabular-nums">
+              {cartCount}
             </span>
-          </div>
-
-          {/* Zone 2: Navigation Links + Direct Social Icons */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold tracking-wider uppercase text-neutral-400">
-            <a
-              href="#"
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
-            >
-              Inicio
-            </a>
-            <a
-              href="#catalogo"
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
-            >
-              Catálogo
-            </a>
-            <a
-              href="#envios"
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 hover:underline underline-offset-8 decoration-[#003314]"
-            >
-              Envíos & Delivery
-            </a>
-
-            {/* Direct Social Media Icons as requested */}
-            <div className="flex items-center gap-3 pl-2 border-l border-neutral-800">
-              <a
-                href={settings.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Síguenos en Instagram @moxie"
-                className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors"
-                aria-label="Instagram de MOXIE"
-              >
-                <InstagramIcon className="w-4 h-4" />
-              </a>
-
-              <a
-                href={settings.tiktokUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Síguenos en TikTok @moxie"
-                className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors"
-                aria-label="TikTok de MOXIE"
-              >
-                <TikTokIcon className="w-4 h-4" />
-              </a>
-            </div>
-          </nav>
-
-          {/* Zone 3: Currency Ticker + Bag + Admin Trigger */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Live Exchange Rate Pill (Mobile & Desktop) */}
-            <div className="hidden sm:flex flex-col text-right text-[11px] font-mono leading-tight pr-2">
-              <span className="text-neutral-500">TASA DEL DÍA</span>
-              <span className="font-bold text-neutral-200 tabular-nums">1$ = {exchangeRateBs} Bs</span>
-            </div>
-
-            {/* Admin Dashboard Trigger */}
-            <button
-              onClick={() => setIsAdminModalOpen(true)}
-              title="Panel de Administración (Control de Stock, Precios y Tasa)"
-              className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 rounded-md hover:border-neutral-700 transition-colors cursor-pointer"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#4ade80]" />
-              <span className="hidden sm:inline">Admin</span>
-            </button>
-
-            {/* Cart Button */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              aria-label={`Bolsa de compras con ${cartCount} prendas`}
-              className="relative inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold tracking-wider uppercase text-black bg-white hover:bg-neutral-200 active:scale-98 transition-all cursor-pointer rounded-md shadow-xs"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span className="hidden sm:inline">Bolsa</span>
-              <span className="inline-flex items-center justify-center bg-[#003314] text-white text-[10px] font-bold rounded-full w-5 h-5 tabular-nums">
-                {cartCount}
-              </span>
-            </button>
-          </div>
+          </button>
         </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 };

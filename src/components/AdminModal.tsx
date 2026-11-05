@@ -7,21 +7,20 @@ import {
   Save,
   RotateCcw,
   Check,
-  AlertCircle,
   TrendingUp,
-  Tag,
   Package,
   Layers,
   MapPin,
   Lock,
   Unlock,
   Upload,
-  Link as LinkIcon,
-  Eye,
-  CheckCircle2,
+  DollarSign,
+  ArrowDownRight,
+  ArrowUpRight,
+  Wallet,
+  ImageIcon,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { Product, DeliveryZone } from '../types';
 
 export const AdminModal: React.FC = () => {
   const {
@@ -34,10 +33,19 @@ export const AdminModal: React.FC = () => {
     updateSettings,
     products,
     addProduct,
-    updateProduct,
+    updateProductPrice,
+    updateProductStockUnits,
     deleteProduct,
     toggleProductStock,
     resetToDefaults,
+    totalInventoryUnits,
+    totalInventoryValuationUSD,
+    financialRecords,
+    addFinancialRecord,
+    deleteFinancialRecord,
+    totalIncomeUSD,
+    totalExpensesUSD,
+    netProfitUSD,
     categories,
     addCategory,
     deleteCategory,
@@ -51,33 +59,37 @@ export const AdminModal: React.FC = () => {
   } = useStore();
 
   const [passwordInput, setPasswordInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'inventory' | 'rates-delivery' | 'categories' | 'add-product' | 'orders'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'finances' | 'rates-banner' | 'add-product' | 'orders'>('inventory');
+
+  // Editing product prices inline
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [tempPriceValue, setTempPriceValue] = useState<number>(0);
+
+  // Editing product stock units inline
+  const [editingStockId, setEditingStockId] = useState<string | null>(null);
+  const [tempStockValue, setTempStockValue] = useState<number>(0);
+
+  // New finance record form
+  const [finType, setFinType] = useState<'ingreso' | 'gasto'>('ingreso');
+  const [finDesc, setFinDesc] = useState('');
+  const [finAmount, setFinAmount] = useState<number>(50);
+  const [finCategory, setFinCategory] = useState('Venta de Ropa');
+
+  // Rate and banner form
+  const [tempRate, setTempRate] = useState<number>(exchangeRateBs);
+  const [tempBannerUrl, setTempBannerUrl] = useState<string>(settings.heroBannerImage || '');
+  const [tempWhatsApp, setTempWhatsApp] = useState(settings.whatsappNumber);
 
   // New product form
   const [newProdName, setNewProdName] = useState('');
   const [newProdCategory, setNewProdCategory] = useState(categories[0] || 'Ropa');
   const [newProdPriceUSD, setNewProdPriceUSD] = useState<number>(35);
-  const [newProdOriginalPrice, setNewProdOriginalPrice] = useState<number>(40);
+  const [newProdStockUnits, setNewProdStockUnits] = useState<number>(20);
   const [newProdImageInput, setNewProdImageInput] = useState('');
   const [newProdImagesList, setNewProdImagesList] = useState<string[]>([]);
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newProdSpecs, setNewProdSpecs] = useState('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
   const [newProdInStock, setNewProdInStock] = useState(true);
-  const [newProdBadge, setNewProdBadge] = useState('NUEVO DROP');
-
-  // Rate and settings form
-  const [tempRate, setTempRate] = useState<number>(exchangeRateBs);
-  const [tempWhatsApp, setTempWhatsApp] = useState(settings.whatsappNumber);
-  const [tempInstagram, setTempInstagram] = useState(settings.instagramUrl);
-  const [tempTikTok, setTempTikTok] = useState(settings.tiktokUrl);
-  const [tempAnnouncement, setTempAnnouncement] = useState(settings.announcement);
-
-  // New category form
-  const [newCatName, setNewCatName] = useState('');
-
-  // New delivery zone form
-  const [newZoneName, setNewZoneName] = useState('');
-  const [newZoneCost, setNewZoneCost] = useState<number>(3.5);
 
   if (!isAdminModalOpen) return null;
 
@@ -87,18 +99,55 @@ export const AdminModal: React.FC = () => {
     setPasswordInput('');
   };
 
-  const handleSaveRateAndBrand = (e: React.FormEvent) => {
+  const handleSavePrice = (id: string) => {
+    updateProductPrice(id, tempPriceValue);
+    setEditingPriceId(null);
+  };
+
+  const handleSaveStockUnits = (id: string) => {
+    updateProductStockUnits(id, tempStockValue);
+    setEditingStockId(null);
+  };
+
+  const handleAddFinance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!finDesc.trim() || finAmount <= 0) return;
+
+    addFinancialRecord({
+      type: finType,
+      description: finDesc.trim(),
+      amountUSD: Number(finAmount),
+      category: finCategory,
+      date: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }),
+    });
+
+    setFinDesc('');
+    setFinAmount(50);
+  };
+
+  const handleSaveRateAndBanner = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({
       exchangeRateBs: Number(tempRate) || 58.5,
+      heroBannerImage: tempBannerUrl.trim(),
       whatsappNumber: tempWhatsApp.trim(),
-      instagramUrl: tempInstagram.trim(),
-      tiktokUrl: tempTikTok.trim(),
-      announcement: tempAnnouncement.trim(),
     });
   };
 
-  // Image Upload helper (FileReader to base64)
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setTempBannerUrl(reader.result);
+          updateSettings({ heroBannerImage: reader.result });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -123,11 +172,7 @@ export const AdminModal: React.FC = () => {
     e.preventDefault();
     if (!newProdName.trim()) return;
 
-    const specsArray = newProdSpecs
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
+    const specsArray = newProdSpecs.split('\n').map((s) => s.trim()).filter(Boolean);
     const imagesToUse =
       newProdImagesList.length > 0
         ? newProdImagesList
@@ -137,12 +182,11 @@ export const AdminModal: React.FC = () => {
       name: newProdName.trim(),
       category: newProdCategory,
       priceUSD: Number(newProdPriceUSD) || 10,
-      originalPriceUSD: Number(newProdOriginalPrice) || undefined,
+      stockUnits: Number(newProdStockUnits) || 0,
       images: imagesToUse,
       description: newProdDesc.trim() || 'Prenda esencial de la colección oficial MOXIE.',
       technicalSpecs: specsArray.length > 0 ? specsArray : ['Algodón Premium Streetwear', 'Corte relajado'],
       inStock: newProdInStock,
-      badge: newProdBadge.trim() || undefined,
       variants: [
         { name: 'Talla', options: ['S', 'M', 'L', 'XL'] },
         { name: 'Color', options: ['Verde Moxie', 'Negro Ébano'] },
@@ -155,28 +199,10 @@ export const AdminModal: React.FC = () => {
       ],
     });
 
-    // Reset
     setNewProdName('');
     setNewProdDesc('');
     setNewProdImagesList([]);
     setActiveTab('inventory');
-  };
-
-  const handleCreateCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newCatName.trim()) {
-      addCategory(newCatName.trim());
-      setNewCatName('');
-    }
-  };
-
-  const handleCreateDeliveryZone = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newZoneName.trim()) {
-      addDeliveryZone(newZoneName.trim(), newZoneCost);
-      setNewZoneName('');
-      setNewZoneCost(3.5);
-    }
   };
 
   return (
@@ -188,7 +214,7 @@ export const AdminModal: React.FC = () => {
       onClick={() => setIsAdminModalOpen(false)}
     >
       <div
-        className="relative bg-neutral-950 text-white w-full max-w-4xl rounded-xl shadow-2xl border border-neutral-800 overflow-hidden my-6"
+        className="relative bg-neutral-950 text-white w-full max-w-5xl rounded-xl shadow-2xl border border-neutral-800 overflow-hidden my-4 sm:my-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -197,10 +223,10 @@ export const AdminModal: React.FC = () => {
             <Shield className="w-5 h-5 text-[#4ade80]" />
             <div>
               <h2 id="admin-title" className="font-display font-extrabold uppercase text-lg sm:text-xl text-white">
-                Panel de Administración MOXIE
+                Panel de Control MOXIE
               </h2>
               <p className="text-xs font-mono text-neutral-400">
-                Control de Stock, Precios en USD/Bs, Tasa del día, Zonas de Valencia y Catálogo
+                Inventario, Control de Stock, Precios en USD, Tasa Bs y Registro de Ingresos/Gastos
               </p>
             </div>
           </div>
@@ -220,10 +246,10 @@ export const AdminModal: React.FC = () => {
               <Lock className="w-7 h-7" />
             </div>
             <h3 className="font-display font-extrabold uppercase text-xl text-white mb-2">
-              Acceso Restringido
+              Acceso Restringido MOXIE
             </h3>
             <p className="text-xs font-mono text-neutral-400 mb-6">
-              Ingresa la contraseña de administrador para gestionar el stock, tasa y catálogo de MOXIE.
+              Ingresa la contraseña para acceder a la gestión de inventario, finanzas y precios.
             </p>
 
             <form onSubmit={handleLogin} className="space-y-4">
@@ -242,7 +268,7 @@ export const AdminModal: React.FC = () => {
                 Ingresar al Panel
               </button>
               <p className="text-[11px] font-mono text-neutral-500">
-                Pista: puedes usar la contraseña <strong>moxie</strong>
+                Contraseña sugerida: <strong>moxie</strong>
               </p>
             </form>
           </div>
@@ -259,31 +285,32 @@ export const AdminModal: React.FC = () => {
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Stock & Prendas ({products.length})
+                Inventario & Precios ({products.length})
               </button>
 
               <button
                 type="button"
-                onClick={() => setActiveTab('rates-delivery')}
-                className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === 'rates-delivery'
+                onClick={() => setActiveTab('finances')}
+                className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'finances'
                     ? 'border-[#4ade80] text-white'
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Tasa Bs & Delivery Valencia
+                <Wallet className="w-3.5 h-3.5 text-[#4ade80]" />
+                <span>Ingresos & Gastos</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setActiveTab('categories')}
+                onClick={() => setActiveTab('rates-banner')}
                 className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === 'categories'
+                  activeTab === 'rates-banner'
                     ? 'border-[#4ade80] text-white'
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Categorías ({categories.length})
+                Tasa Bs & Foto Portada
               </button>
 
               <button
@@ -308,90 +335,388 @@ export const AdminModal: React.FC = () => {
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Pedidos Registrados ({orders.length})
+                Pedidos ({orders.length})
               </button>
             </div>
 
-            {/* TAB 1: Stock & Products Table */}
+            {/* TAB 1: Inventory & Stock with Direct Price Editing */}
             {activeTab === 'inventory' && (
-              <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-4 font-mono text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-800">
-                  <p className="text-neutral-400">
-                    Haz clic en el botón de estado para cambiar entre <strong className="text-[#4ade80]">EN STOCK</strong> y <strong className="text-neutral-400">AGOTADO</strong> instantáneamente.
-                  </p>
+              <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-5 font-mono text-xs">
+                {/* Inventory KPI Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-neutral-900 rounded-lg border border-neutral-800">
+                    <span className="text-[10px] text-neutral-400 uppercase block">Total Unidades en Stock</span>
+                    <span className="text-xl font-bold text-white tabular-nums">{totalInventoryUnits} prendas</span>
+                  </div>
+
+                  <div className="p-3.5 bg-neutral-900 rounded-lg border border-neutral-800">
+                    <span className="text-[10px] text-neutral-400 uppercase block">Valoración de Inventario</span>
+                    <span className="text-xl font-bold text-[#4ade80] tabular-nums">
+                      {formatUSD(totalInventoryValuationUSD)}
+                    </span>
+                    <span className="text-[10px] text-neutral-500 block">≈ {formatBs(totalInventoryValuationUSD)}</span>
+                  </div>
+
+                  <div className="p-3.5 bg-neutral-900 rounded-lg border border-neutral-800">
+                    <span className="text-[10px] text-neutral-400 uppercase block">Prendas Activas en Catálogo</span>
+                    <span className="text-xl font-bold text-white tabular-nums">{products.length} modelos</span>
+                  </div>
+                </div>
+
+                <div className="text-neutral-400 text-[11px] flex items-center justify-between">
+                  <span>
+                    Edita el precio en USD, modifica las unidades disponibles o cambia el estado (En Stock / Agotado) con un clic:
+                  </span>
                   <button
-                    type="button"
                     onClick={() => setActiveTab('add-product')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded transition-colors cursor-pointer"
+                    className="px-3 py-1 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Nueva Prenda</span>
+                    + Nueva Prenda
                   </button>
                 </div>
 
+                {/* Table of Products */}
                 <div className="divide-y divide-neutral-900 border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900/40">
-                  {products.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 hover:bg-neutral-900 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={p.images?.[0] || '/src/assets/images/moxie_tshirt_black_1793892891603.jpg'}
-                          alt={p.name}
-                          referrerPolicy="no-referrer"
-                          className="w-12 h-12 object-cover rounded bg-black shrink-0 border border-neutral-800"
-                        />
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-white uppercase text-xs truncate">
-                            {p.name}
-                          </h4>
-                          <span className="text-[11px] text-neutral-400 block">
-                            {p.category} · {formatUSD(p.priceUSD)} <span className="text-[#4ade80]">({formatBs(p.priceUSD)})</span>
-                          </span>
+                  {products.map((p) => {
+                    const isEditingPrice = editingPriceId === p.id;
+                    const isEditingStock = editingStockId === p.id;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 hover:bg-neutral-900 transition-colors"
+                      >
+                        {/* Thumbnail & Name */}
+                        <div className="flex items-center gap-3 min-w-[220px]">
+                          <img
+                            src={p.images?.[0] || '/src/assets/images/moxie_tshirt_black_1793892891603.jpg'}
+                            alt={p.name}
+                            referrerPolicy="no-referrer"
+                            className="w-12 h-12 object-cover rounded bg-black shrink-0 border border-neutral-800"
+                          />
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-white uppercase text-xs truncate">
+                              {p.name}
+                            </h4>
+                            <span className="text-[11px] text-neutral-400 block">
+                              {p.category}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Price in USD (Editable) */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-neutral-500 uppercase">Precio:</span>
+                          {isEditingPrice ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="1"
+                                value={tempPriceValue}
+                                onChange={(e) => setTempPriceValue(Number(e.target.value))}
+                                className="w-16 px-1.5 py-1 text-xs bg-neutral-950 border border-[#005220] rounded text-white tabular-nums"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSavePrice(p.id)}
+                                className="p-1 bg-[#003314] text-[#4ade80] rounded hover:bg-[#005220]"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingPriceId(p.id);
+                                setTempPriceValue(p.priceUSD);
+                              }}
+                              className="font-bold text-white hover:text-[#4ade80] hover:underline cursor-pointer tabular-nums text-xs"
+                              title="Clic para editar precio"
+                            >
+                              {formatUSD(p.priceUSD)} <span className="text-[10px] text-neutral-500">({formatBs(p.priceUSD)})</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Inventory Units (Editable) */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-neutral-500 uppercase">Unidades:</span>
+                          {isEditingStock ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                value={tempStockValue}
+                                onChange={(e) => setTempStockValue(Number(e.target.value))}
+                                className="w-14 px-1.5 py-1 text-xs bg-neutral-950 border border-[#005220] rounded text-white tabular-nums"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveStockUnits(p.id)}
+                                className="p-1 bg-[#003314] text-[#4ade80] rounded hover:bg-[#005220]"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingStockId(p.id);
+                                setTempStockValue(p.stockUnits || 0);
+                              }}
+                              className="font-bold text-neutral-300 hover:text-white hover:underline cursor-pointer tabular-nums text-xs"
+                              title="Clic para editar unidades"
+                            >
+                              {p.stockUnits ?? 0} u.
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Availability Toggle Button */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleProductStock(p.id)}
+                            className={`px-3 py-1.5 text-[11px] font-bold uppercase rounded border transition-all cursor-pointer ${
+                              p.inStock
+                                ? 'bg-[#003314] text-[#4ade80] border-[#005220] hover:bg-neutral-800 hover:text-neutral-300'
+                                : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-[#003314] hover:text-[#4ade80]'
+                            }`}
+                            title="Clic para cambiar entre Disponible y Agotado"
+                          >
+                            {p.inStock ? '✓ DISPONIBLE' : '✕ AGOTADO'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteProduct(p.id)}
+                            title="Eliminar prenda"
+                            className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors rounded cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-
-                      {/* Controls: Stock Toggle & Delete */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => toggleProductStock(p.id)}
-                          className={`px-3 py-1.5 text-[11px] font-bold uppercase rounded border transition-all cursor-pointer ${
-                            p.inStock
-                              ? 'bg-[#003314] text-[#4ade80] border-[#005220] hover:bg-red-950/60 hover:text-red-400 hover:border-red-800'
-                              : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-[#003314] hover:text-[#4ade80] hover:border-[#005220]'
-                          }`}
-                          title="Clic para cambiar estado"
-                        >
-                          {p.inStock ? '✓ EN STOCK' : '✕ AGOTADO'}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => deleteProduct(p.id)}
-                          title="Eliminar producto"
-                          className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors rounded cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: Rates & Delivery Settings */}
-            {activeTab === 'rates-delivery' && (
+            {/* TAB 2: Finances (Ingresos y Gastos) */}
+            {activeTab === 'finances' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
-                {/* Exchange Rate Form */}
-                <form onSubmit={handleSaveRateAndBrand} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
+                {/* Financial KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] text-neutral-400 uppercase block">Total Ingresos</span>
+                      <span className="text-2xl font-bold text-emerald-400 tabular-nums">
+                        +{formatUSD(totalIncomeUSD)}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 block mt-0.5">
+                        ≈ {formatBs(totalIncomeUSD)}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded border border-emerald-800">
+                      <ArrowUpRight className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] text-neutral-400 uppercase block">Total Gastos</span>
+                      <span className="text-2xl font-bold text-red-400 tabular-nums">
+                        -{formatUSD(totalExpensesUSD)}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 block mt-0.5">
+                        ≈ {formatBs(totalExpensesUSD)}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-red-950/60 text-red-400 rounded border border-red-800">
+                      <ArrowDownRight className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] text-neutral-400 uppercase block">Balance Neto</span>
+                      <span
+                        className={`text-2xl font-bold tabular-nums ${
+                          netProfitUSD >= 0 ? 'text-[#4ade80]' : 'text-red-400'
+                        }`}
+                      >
+                        {formatUSD(netProfitUSD)}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 block mt-0.5">
+                        ≈ {formatBs(netProfitUSD)}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-[#003314] text-[#4ade80] rounded border border-[#005220]">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* New Transaction Form */}
+                <form onSubmit={handleAddFinance} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
+                  <h4 className="font-bold uppercase text-white text-xs flex items-center gap-2">
+                    <Plus className="w-3.5 h-3.5 text-[#4ade80]" />
+                    <span>Registrar Nuevo Movimiento (Ingreso o Gasto)</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
+                        Tipo de Movimiento
+                      </label>
+                      <select
+                        value={finType}
+                        onChange={(e) => setFinType(e.target.value as 'ingreso' | 'gasto')}
+                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                      >
+                        <option value="ingreso">🟢 Ingreso (Venta, Abono)</option>
+                        <option value="gasto">🔴 Gasto (Tela, Confección, Empaque)</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
+                        Descripción / Concepto *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Compra de tela French Terry 460 GSM o Venta Drop 01"
+                        value={finDesc}
+                        onChange={(e) => setFinDesc(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
+                        Monto en USD ($) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={finAmount}
+                        onChange={(e) => setFinAmount(Number(e.target.value))}
+                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-neutral-400 uppercase">Categoría:</span>
+                      <select
+                        value={finCategory}
+                        onChange={(e) => setFinCategory(e.target.value)}
+                        className="px-2 py-1 bg-neutral-950 border border-neutral-700 rounded text-white text-[11px]"
+                      >
+                        <option value="Ventas de Ropa">Ventas de Ropa</option>
+                        <option value="Materia Prima">Materia Prima (Telas / Hilos)</option>
+                        <option value="Confección & Taller">Confección & Taller</option>
+                        <option value="Empaque & Branding">Empaque & Branding</option>
+                        <option value="Marketing & Redes">Marketing & Redes</option>
+                        <option value="Logística & Delivery">Logística & Delivery</option>
+                        <option value="Otros Gastos">Otros Gastos</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200 cursor-pointer"
+                    >
+                      + Guardar Movimiento
+                    </button>
+                  </div>
+                </form>
+
+                {/* Financial History Table */}
+                <div className="space-y-2">
+                  <h4 className="font-bold uppercase text-neutral-300 text-xs">
+                    Historial de Movimientos ({financialRecords.length})
+                  </h4>
+
+                  {financialRecords.length === 0 ? (
+                    <p className="text-center py-6 text-neutral-500">
+                      Aún no hay movimientos registrados.
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-neutral-900 border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900/40">
+                      {financialRecords.map((r) => (
+                        <div
+                          key={r.id}
+                          className="p-3 flex items-center justify-between hover:bg-neutral-900 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`p-1.5 rounded text-[10px] font-bold uppercase ${
+                                r.type === 'ingreso'
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                  : 'bg-red-950 text-red-400 border border-red-800'
+                              }`}
+                            >
+                              {r.type === 'ingreso' ? '+ INGRESO' : '- GASTO'}
+                            </span>
+                            <div>
+                              <p className="font-bold text-white text-xs">{r.description}</p>
+                              <span className="text-[10px] text-neutral-400">
+                                {r.category} · {r.date}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span
+                                className={`font-bold tabular-nums text-sm block ${
+                                  r.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
+                                }`}
+                              >
+                                {r.type === 'ingreso' ? '+' : '-'}${r.amountUSD.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] text-neutral-500 tabular-nums">
+                                ≈ {formatBs(r.amountUSD)}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteFinancialRecord(r.id)}
+                              className="text-neutral-500 hover:text-red-400 p-1"
+                              title="Eliminar movimiento"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Exchange Rate & Main Banner Photo */}
+            {activeTab === 'rates-banner' && (
+              <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
+                <form onSubmit={handleSaveRateAndBanner} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-[#4ade80]" />
                       <h4 className="font-bold uppercase text-white">
-                        Tasa de Cambio Oficial (Bs por 1 USD $)
+                        Tasa de Cambio en Bolívares (Bs por 1 USD)
                       </h4>
                     </div>
                     <span className="text-[#4ade80] font-bold">
@@ -401,8 +726,8 @@ export const AdminModal: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-neutral-400 mb-1">
-                        Tasa del día (Ej. 58.50, 60.00)
+                      <label className="block text-neutral-400 mb-1 font-bold">
+                        Tasa Oficial / BCV del día (Bs)
                       </label>
                       <input
                         type="number"
@@ -411,198 +736,97 @@ export const AdminModal: React.FC = () => {
                         value={tempRate}
                         onChange={(e) => setTempRate(Number(e.target.value))}
                         className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
                       />
+                      <span className="text-[10px] text-neutral-500 mt-1 block">
+                        Al guardar, todos los precios en la web se recalcularán automáticamente en Bolívares.
+                      </span>
                     </div>
 
                     <div>
-                      <label className="block text-neutral-400 mb-1">
-                        WhatsApp de la Marca (con código de país sin +)
+                      <label className="block text-neutral-400 mb-1 font-bold">
+                        WhatsApp de Contacto y Pedidos
                       </label>
                       <input
                         type="tel"
                         value={tempWhatsApp}
                         onChange={(e) => setTempWhatsApp(e.target.value)}
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
                         placeholder="584121234567"
-                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-neutral-400 mb-1">
-                        URL de Instagram de MOXIE
-                      </label>
-                      <input
-                        type="url"
-                        value={tempInstagram}
-                        onChange={(e) => setTempInstagram(e.target.value)}
-                        placeholder="https://instagram.com/moxie"
-                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-neutral-400 mb-1">
-                        URL de TikTok de MOXIE
-                      </label>
-                      <input
-                        type="url"
-                        value={tempTikTok}
-                        onChange={(e) => setTempTikTok(e.target.value)}
-                        placeholder="https://tiktok.com/@moxie"
-                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-neutral-400 mb-1">
-                        Texto de la barra de anuncios superior
-                      </label>
-                      <input
-                        type="text"
-                        value={tempAnnouncement}
-                        onChange={(e) => setTempAnnouncement(e.target.value)}
-                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
                       />
                     </div>
                   </div>
 
-                  <div className="pt-2 flex justify-end">
+                  {/* Main Banner / Photo Changer */}
+                  <div className="pt-4 border-t border-neutral-800 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-[#4ade80]" />
+                      <h4 className="font-bold uppercase text-white">
+                        Foto Principal de Portada / Banner (Hero)
+                      </h4>
+                    </div>
+
+                    <p className="text-[11px] text-neutral-400">
+                      Sube la fotografía principal que represente a MOXIE o introduce la URL directa:
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div className="p-3 bg-neutral-950 rounded border border-dashed border-neutral-700 text-center">
+                        <Upload className="w-4 h-4 mx-auto text-neutral-400 mb-1" />
+                        <span className="text-[11px] text-neutral-400 block mb-1">
+                          Subir foto desde tu dispositivo
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerUpload}
+                          className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-white file:text-black cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="p-3 bg-neutral-950 rounded border border-neutral-800">
+                        <span className="text-[11px] text-neutral-400 block mb-1">
+                          O escribe la URL de la imagen:
+                        </span>
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={tempBannerUrl}
+                          onChange={(e) => setTempBannerUrl(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs bg-neutral-900 border border-neutral-700 rounded text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {tempBannerUrl && (
+                      <div className="pt-2">
+                        <span className="text-[10px] text-neutral-500 uppercase block mb-1">
+                          Vista previa del banner actual:
+                        </span>
+                        <img
+                          src={tempBannerUrl}
+                          alt="Banner actual"
+                          className="w-full max-h-36 object-cover rounded border border-neutral-800"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-3 flex justify-end">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded transition-colors cursor-pointer"
+                      className="px-5 py-2 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded transition-colors cursor-pointer"
                     >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>Actualizar Tasa y Redes</span>
+                      <Save className="w-3.5 h-3.5 inline mr-1.5" />
+                      <span>Guardar Cambios</span>
                     </button>
                   </div>
                 </form>
-
-                {/* Delivery Zones in Valencia */}
-                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#4ade80]" />
-                      <h4 className="font-bold uppercase text-white">
-                        Zonas de Delivery en Valencia y Costos ($)
-                      </h4>
-                    </div>
-                  </div>
-
-                  <p className="text-neutral-400 text-[11px]">
-                    El cliente verá estas opciones cuando elija &quot;Delivery en Valencia&quot; y el costo se sumará automáticamente en USD y Bs.
-                  </p>
-
-                  {/* Zones list */}
-                  <div className="space-y-2">
-                    {deliveryZones.map((z) => (
-                      <div
-                        key={z.id}
-                        className="flex items-center justify-between p-2.5 bg-neutral-950 rounded border border-neutral-800"
-                      >
-                        <span className="font-bold text-white">{z.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#4ade80] font-bold tabular-nums">
-                            {formatUSD(z.costUSD)} ({formatBs(z.costUSD)})
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => deleteDeliveryZone(z.id)}
-                            className="text-neutral-500 hover:text-red-400 p-1 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add zone form */}
-                  <form onSubmit={handleCreateDeliveryZone} className="pt-2 border-t border-neutral-800 flex flex-wrap gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nombre de la zona (ej. Trigaleña / El Trigal)"
-                      value={newZoneName}
-                      onChange={(e) => setNewZoneName(e.target.value)}
-                      className="flex-1 min-w-[200px] px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      required
-                    />
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      placeholder="Costo en $"
-                      value={newZoneCost}
-                      onChange={(e) => setNewZoneCost(Number(e.target.value))}
-                      className="w-24 px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-1.5 text-xs font-bold uppercase bg-[#003314] text-[#4ade80] border border-[#005220] rounded hover:bg-[#005220] cursor-pointer"
-                    >
-                      + Añadir Zona
-                    </button>
-                  </form>
-                </div>
               </div>
             )}
 
-            {/* TAB 3: Categories Management */}
-            {activeTab === 'categories' && (
-              <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
-                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
-                    <Layers className="w-4 h-4 text-[#4ade80]" />
-                    <h4 className="font-bold uppercase text-white">
-                      Categorías del Catálogo MOXIE
-                    </h4>
-                  </div>
-
-                  <p className="text-neutral-400 text-[11px]">
-                    Actualmente tienes las dos principales <strong>Ropa</strong> y <strong>Accesorios</strong>. Puedes agregar cuantas categorías desees (ej: Hoodies, Shorts, Calzado, Ediciones Limitadas):
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {categories.map((cat) => (
-                      <div
-                        key={cat}
-                        className="flex items-center justify-between p-3 bg-neutral-950 rounded border border-neutral-800"
-                      >
-                        <span className="font-bold uppercase text-white">{cat}</span>
-                        <button
-                          type="button"
-                          onClick={() => deleteCategory(cat)}
-                          className="text-neutral-500 hover:text-red-400 p-1 cursor-pointer"
-                          title="Eliminar categoría"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add Category Form */}
-                  <form onSubmit={handleCreateCategory} className="pt-2 border-t border-neutral-800 flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nueva categoría (ej. Edición Limitada)"
-                      value={newCatName}
-                      onChange={(e) => setNewCatName(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded cursor-pointer"
-                    >
-                      + Crear Categoría
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: Add New Product Form */}
+            {/* TAB 4: Add New Product */}
             {activeTab === 'add-product' && (
               <form onSubmit={handleCreateProduct} className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-4 font-mono text-xs">
                 <div>
@@ -611,7 +835,7 @@ export const AdminModal: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. MOXIE Oversized Heavyweight Hoodie"
+                    placeholder="Ej. MOXIE Heavyweight Boxy Hoodie"
                     value={newProdName}
                     onChange={(e) => setNewProdName(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
@@ -656,14 +880,14 @@ export const AdminModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block uppercase text-neutral-400 mb-1">
-                      Badge / Etiqueta
+                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                      Unidades Iniciales en Inventario
                     </label>
                     <input
-                      type="text"
-                      placeholder="DROP 01, HEAVYWEIGHT..."
-                      value={newProdBadge}
-                      onChange={(e) => setNewProdBadge(e.target.value)}
+                      type="number"
+                      min="0"
+                      value={newProdStockUnits}
+                      onChange={(e) => setNewProdStockUnits(Number(e.target.value))}
                       className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
                     />
                   </div>
@@ -680,14 +904,9 @@ export const AdminModal: React.FC = () => {
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-neutral-400">
-                    Puedes cargar tus fotos oficiales desde tu equipo o ingresar la URL de la imagen:
-                  </p>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Option A: Local file upload */}
                     <div className="p-3 bg-neutral-950 rounded border border-dashed border-neutral-700 text-center">
-                      <Upload className="w-5 h-5 mx-auto text-neutral-500 mb-1" />
+                      <Upload className="w-4 h-4 mx-auto text-neutral-500 mb-1" />
                       <span className="text-[11px] text-neutral-400 block mb-2">
                         Subir foto desde tu dispositivo
                       </span>
@@ -695,11 +914,10 @@ export const AdminModal: React.FC = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleLocalImageUpload}
-                        className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-mono file:bg-white file:text-black hover:file:bg-neutral-200 cursor-pointer"
+                        className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-white file:text-black cursor-pointer"
                       />
                     </div>
 
-                    {/* Option B: Direct URL */}
                     <div className="p-3 bg-neutral-950 rounded border border-neutral-800">
                       <span className="text-[11px] text-neutral-400 block mb-1">
                         O pega la URL directa de la foto:
@@ -723,7 +941,6 @@ export const AdminModal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Previews of loaded photos */}
                   {newProdImagesList.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto pt-2">
                       {newProdImagesList.map((img, i) => (
@@ -750,22 +967,10 @@ export const AdminModal: React.FC = () => {
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="Detalles del fit, tacto y silueta..."
+                    placeholder="Detalles del fit, corte y silueta..."
                     value={newProdDesc}
                     onChange={(e) => setNewProdDesc(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase text-neutral-400 mb-1">
-                    Especificaciones Técnicas (una por línea)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={newProdSpecs}
-                    onChange={(e) => setNewProdSpecs(e.target.value)}
-                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white font-mono text-[11px]"
                   />
                 </div>
 
@@ -798,7 +1003,7 @@ export const AdminModal: React.FC = () => {
                     Historial de Pedidos Generados ({orders.length})
                   </h4>
                   <span className="text-neutral-500 text-[11px]">
-                    Registrados automáticamente al tramitar
+                    Registrados automáticamente al enviar pedido por WhatsApp
                   </span>
                 </div>
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { DeliveryType, OrderDelivery, OrderCustomer, AgencyShippingData } from '../types';
+import { MoxieLogo } from './MoxieLogo';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -151,15 +152,18 @@ export const CheckoutModal: React.FC = () => {
         className="relative bg-neutral-950 text-white w-full max-w-2xl rounded-xl shadow-2xl border border-neutral-800 overflow-hidden my-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header with official MOXIE badge */}
         <div className="p-5 sm:p-6 border-b border-neutral-800 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-mono font-bold tracking-widest text-[#4ade80] uppercase">
-              CHECKOUT DIRECTO VÍA WHATSAPP
+          <div className="flex items-center gap-3">
+            <MoxieLogo variant="badge" className="w-10 h-10" />
+            <div>
+              <div className="text-[10px] font-mono font-bold tracking-widest text-[#4ade80] uppercase">
+                CHECKOUT DIRECTO VÍA WHATSAPP
+              </div>
+              <h2 id="checkout-title" className="font-display font-extrabold uppercase text-xl sm:text-2xl text-white">
+                Finalizar Pedido MOXIE
+              </h2>
             </div>
-            <h2 id="checkout-title" className="font-display font-extrabold uppercase text-xl sm:text-2xl text-white">
-              Finalizar Pedido MOXIE
-            </h2>
           </div>
           <button
             onClick={() => setIsCheckoutOpen(false)}

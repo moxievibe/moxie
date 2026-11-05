@@ -1,6 +1,7 @@
 import React from 'react';
-import { Shield, MapPin, Truck, ExternalLink } from 'lucide-react';
+import { Shield, MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { MoxieLogo } from './MoxieLogo';
 
 const InstagramIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg
@@ -31,99 +32,76 @@ const TikTokIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' })
 );
 
 export const Footer: React.FC = () => {
-  const { settings, setIsAdminModalOpen, exchangeRateBs } = useStore();
+  const { settings, setIsAdminModalOpen } = useStore();
+
+  const cleanPhone = settings.whatsappNumber.replace(/[^0-9]/g, '');
 
   return (
-    <footer className="bg-black text-neutral-400 font-mono text-xs border-t border-neutral-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-          {/* Brand Col */}
-          <div className="space-y-3">
-            <span className="text-3xl font-extrabold uppercase font-display tracking-tight text-white block">
-              {settings.storeName}
-            </span>
-            <p className="text-neutral-400 text-xs leading-relaxed">
-              Marca venezolana de ropa streetwear & sportswear contemporánea. Siluetas relajadas, cortes boxy y máxima durabilidad.
+    <footer className="bg-black text-white font-mono text-xs border-t border-neutral-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 pb-8 border-b border-neutral-900">
+          {/* Brand Logo & Short Elegant Phrase */}
+          <div className="text-center md:text-left space-y-2">
+            <MoxieLogo variant="footer" />
+            <p className="text-neutral-400 text-xs mt-1">
+              Marca de ropa deportiva contemporánea.
             </p>
-            <div className="flex items-center gap-3 pt-2">
-              <a
-                href={settings.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-neutral-900 hover:bg-[#003314] hover:text-[#4ade80] rounded border border-neutral-800 transition-colors"
-                aria-label="Instagram MOXIE"
-              >
-                <InstagramIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={settings.tiktokUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-neutral-900 hover:bg-[#003314] hover:text-[#4ade80] rounded border border-neutral-800 transition-colors"
-                aria-label="TikTok MOXIE"
-              >
-                <TikTokIcon className="w-4 h-4" />
-              </a>
-            </div>
           </div>
 
-          {/* Delivery & Areas */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">
-              Envíos & Entregas
-            </h4>
-            <ul className="space-y-2 text-neutral-400 text-[11px]">
-              <li className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#4ade80]" />
-                <span>Pick Up: Tocuyito, Valencia (Gratis)</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-[#4ade80]" />
-                <span>Delivery: Toda Valencia (Zonas configurables)</span>
-              </li>
-              <li>Nacionales: Envíos diarios vía MRW & Tealca</li>
-              <li>Tasa oficial de referencia: 1$ = {exchangeRateBs} Bs</li>
-            </ul>
+          {/* Clear Social Media & WhatsApp Contact Access */}
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+            {/* Instagram: @moxievibe */}
+            <a
+              href="https://instagram.com/moxievibe"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-900 hover:bg-[#003314] hover:text-[#4ade80] rounded border border-neutral-800 transition-colors"
+            >
+              <InstagramIcon className="w-4 h-4 text-[#4ade80]" />
+              <span className="font-bold text-xs text-white">@moxievibe</span>
+            </a>
+
+            {/* TikTok: @moxievibe */}
+            <a
+              href="https://tiktok.com/@moxievibe"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-900 hover:bg-[#003314] hover:text-[#4ade80] rounded border border-neutral-800 transition-colors"
+            >
+              <TikTokIcon className="w-4 h-4 text-[#4ade80]" />
+              <span className="font-bold text-xs text-white">@moxievibe</span>
+            </a>
+
+            {/* Direct WhatsApp Contact */}
+            <a
+              href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent('Hola equipo MOXIE! Quiero comunicarme con ustedes.')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#003314] hover:bg-[#005220] text-white rounded border border-[#005220] transition-colors"
+            >
+              <MessageCircle className="w-4 h-4 text-[#4ade80]" />
+              <span className="font-bold text-xs">WhatsApp: +{cleanPhone}</span>
+            </a>
           </div>
 
-          {/* Customer Support */}
+          {/* Discrete Admin Link */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">
-              Atención al Cliente
-            </h4>
-            <ul className="space-y-2 text-neutral-400 text-[11px]">
-              <li>Atención directa por WhatsApp</li>
-              <li>Pagos: Zelle, Dólares Efectivo, Pago Móvil</li>
-              <li>Guía de tallas personalizada</li>
-              <li>Atención: Lunes a Sábado 9:00 AM - 7:00 PM</li>
-            </ul>
-          </div>
-
-          {/* Private Admin Trigger */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">
-              Gestión Interna
-            </h4>
-            <p className="text-neutral-500 text-[11px] mb-3">
-              Panel privado para actualizar stock, tasa BCV, nuevas fotos y zonas de Valencia.
-            </p>
             <button
               onClick={() => setIsAdminModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded border border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer text-xs uppercase font-bold"
+              className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-white transition-colors cursor-pointer text-[11px] uppercase tracking-wider"
             >
               <Shield className="w-3.5 h-3.5 text-[#4ade80]" />
-              <span>Panel de Control MOXIE</span>
+              <span>Panel Admin</span>
             </button>
           </div>
         </div>
 
-        {/* Bottom Strip */}
-        <div className="pt-8 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-neutral-500">
-          <p>© {new Date().getFullYear()} {settings.storeName} Streetwear. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-3 text-neutral-400">
-            <span>Valencia, Venezuela</span>
-            <span>·</span>
-            <span>Verde #003314 / Black / White</span>
+        {/* Bottom copyright line */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-neutral-500">
+          <p>© {new Date().getFullYear()} {settings.storeName}. Valencia, Venezuela.</p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#005220]" />
+            <span>Verde #003314 · Negro · Blanco</span>
           </div>
         </div>
       </div>

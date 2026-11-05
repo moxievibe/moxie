@@ -21,10 +21,20 @@ export interface Product {
   description: string;
   technicalSpecs: string[];
   sizeGuide?: SizeGuideItem[];
+  stockUnits?: number; // Total units in stock
   inStock: boolean; // "En Stock" | "Agotado"
   variants: ProductVariant[];
   badge?: string;
   featured?: boolean;
+}
+
+export interface FinancialRecord {
+  id: string;
+  type: 'ingreso' | 'gasto';
+  description: string;
+  amountUSD: number;
+  category: string; // ej: 'Venta de Ropa', 'Compra de Tela', 'Confección', 'Empaque', 'Marketing', 'Logística'
+  date: string;
 }
 
 export interface CartItem {
@@ -87,7 +97,8 @@ export interface Order {
 export interface StoreSettings {
   storeName: string;
   tagline: string;
-  whatsappNumber: string; // International format without + (e.g., 584120000000)
+  heroBannerImage?: string; // Customizable main photo
+  whatsappNumber: string; // International format without + (e.g., 584121234567)
   instagramUrl: string;
   tiktokUrl: string;
   exchangeRateBs: number; // e.g., 58.50 Bs per 1 USD

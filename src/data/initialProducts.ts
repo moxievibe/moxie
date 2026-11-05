@@ -1,11 +1,12 @@
-import { Product, StoreSettings } from '../types';
+import { Product, StoreSettings, FinancialRecord } from '../types';
 
 export const INITIAL_SETTINGS: StoreSettings = {
   storeName: 'MOXIE',
-  tagline: 'STREETWEAR & SPORTSWEAR',
+  tagline: 'Actitud y Estilo',
+  heroBannerImage: '/src/assets/images/moxie_streetwear_hero_1793892889970.jpg',
   whatsappNumber: '584121234567',
-  instagramUrl: 'https://instagram.com/moxie',
-  tiktokUrl: 'https://tiktok.com/@moxie',
+  instagramUrl: 'https://instagram.com/moxievibe',
+  tiktokUrl: 'https://tiktok.com/@moxievibe',
   exchangeRateBs: 58.50, // 1 USD = 58.50 Bs (configurable)
   categories: ['Ropa', 'Accesorios'],
   deliveryZones: [
@@ -16,9 +17,44 @@ export const INITIAL_SETTINGS: StoreSettings = {
     { id: 'zone-5', name: 'Los Guayos / Paraparal / Guacara', costUSD: 4.5 },
   ],
   adminPassword: 'moxie',
-  announcement: 'MOXIE DROP 01 · PICK UP GRATIS EN TOCUYITO · DELIVERY VALENCIA · ENVÍOS NACIONALES MRW & TEALCA',
-  showAnnouncement: true,
+  announcement: '',
+  showAnnouncement: false,
 };
+
+export const INITIAL_FINANCIAL_RECORDS: FinancialRecord[] = [
+  {
+    id: 'fin-1',
+    type: 'ingreso',
+    description: 'Venta 2x Heavyweight Boxy Hoodie',
+    amountUSD: 96,
+    category: 'Ventas de Ropa',
+    date: '04 Nov 2026',
+  },
+  {
+    id: 'fin-2',
+    type: 'gasto',
+    description: 'Compra de tela French Terry 460 GSM',
+    amountUSD: 140,
+    category: 'Materia Prima',
+    date: '03 Nov 2026',
+  },
+  {
+    id: 'fin-3',
+    type: 'ingreso',
+    description: 'Venta 1x Oversized Tee + 1x Cap Arch',
+    amountUSD: 50,
+    category: 'Ventas de Ropa',
+    date: '03 Nov 2026',
+  },
+  {
+    id: 'fin-4',
+    type: 'gasto',
+    description: 'Bolsas mate personalizadas y etiquetas tejidas',
+    amountUSD: 35,
+    category: 'Empaque & Branding',
+    date: '01 Nov 2026',
+  },
+];
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
@@ -27,6 +63,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Ropa',
     priceUSD: 48,
     originalPriceUSD: 55,
+    stockUnits: 22,
     images: [
       '/src/assets/images/moxie_hoodie_green_1793892890875.jpg',
       '/src/assets/images/moxie_streetwear_hero_1793892889970.jpg',
@@ -66,6 +103,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Ropa',
     priceUSD: 28,
     originalPriceUSD: 32,
+    stockUnits: 35,
     images: [
       '/src/assets/images/moxie_tshirt_black_1793892891603.jpg',
       '/src/assets/images/moxie_streetwear_hero_1793892889970.jpg',
@@ -103,6 +141,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'MOXIE Sportswear Nylon Track Jacket',
     category: 'Ropa',
     priceUSD: 55,
+    stockUnits: 14,
     images: [
       '/src/assets/images/moxie_streetwear_hero_1793892889970.jpg',
       '/src/assets/images/moxie_hoodie_green_1793892890875.jpg',
@@ -140,6 +179,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'MOXIE 6-Panel Dad Cap "Arch"',
     category: 'Accesorios',
     priceUSD: 22,
+    stockUnits: 28,
     images: [
       '/src/assets/images/moxie_cap_accessory_1793892891425.jpg',
     ],
@@ -166,6 +206,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'MOXIE Ribbed Crew Socks (Pack x2)',
     category: 'Accesorios',
     priceUSD: 14,
+    stockUnits: 40,
     images: [
       '/src/assets/images/moxie_cap_accessory_1793892891425.jpg',
     ],
@@ -191,6 +232,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'MOXIE Relaxed Technical Cargo Pants',
     category: 'Ropa',
     priceUSD: 52,
+    stockUnits: 0,
     images: [
       '/src/assets/images/moxie_streetwear_hero_1793892889970.jpg',
     ],
@@ -207,7 +249,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       { size: 'L', chestCm: 86, lengthCm: 105, waistCm: 86 },
       { size: 'XL', chestCm: 91, lengthCm: 107, waistCm: 91 },
     ],
-    inStock: false, // Exemplifying "Agotado" state as requested
+    inStock: false,
     featured: false,
     badge: 'AGOTADO',
     variants: [
