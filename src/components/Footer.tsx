@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, MessageCircle } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { MoxieLogo } from './MoxieLogo';
 
@@ -83,24 +83,19 @@ export const Footer: React.FC = () => {
               <span className="font-bold text-xs">WhatsApp: +{cleanPhone}</span>
             </a>
           </div>
-
-          {/* Discrete Admin Link */}
-          <div>
-            <button
-              onClick={() => setIsAdminModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-white transition-colors cursor-pointer text-[11px] uppercase tracking-wider"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#4ade80]" />
-              <span>Panel Admin</span>
-            </button>
-          </div>
         </div>
 
         {/* Bottom copyright line */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-neutral-500">
           <p>© {new Date().getFullYear()} {settings.storeName}. Valencia, Venezuela.</p>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#005220]" />
+            {/* Discreet secret trigger: subtle green dot opens admin on click */}
+            <button
+              type="button"
+              onClick={() => setIsAdminModalOpen(true)}
+              className="w-2 h-2 rounded-full bg-[#005220] hover:bg-[#4ade80] transition-colors cursor-default"
+              aria-label="Status"
+            />
             <span>Verde #003314 · Negro · Blanco</span>
           </div>
         </div>

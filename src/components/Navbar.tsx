@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Shield } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { MoxieLogo } from './MoxieLogo';
 
@@ -44,8 +44,15 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
-        {/* Zone 1: Official MOXIE Logo with star in the 'o' and chunky typography */}
-        <a href="#" className="hover:opacity-90 transition-opacity">
+        {/* Zone 1: Official MOXIE Logo with transparent PNG */}
+        <a
+          href="#"
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            setIsAdminModalOpen(true);
+          }}
+          className="hover:opacity-90 transition-opacity"
+        >
           <MoxieLogo variant="header" />
         </a>
 
@@ -96,23 +103,13 @@ export const Navbar: React.FC = () => {
           </div>
         </nav>
 
-        {/* Zone 3: Currency Ticker + Admin + Bag */}
+        {/* Zone 3: Currency Ticker + Bag */}
         <div className="flex items-center gap-3 shrink-0">
           {/* Live Exchange Rate */}
           <div className="hidden sm:flex flex-col text-right text-[11px] font-mono leading-tight pr-2">
             <span className="text-neutral-500">TASA BCV</span>
             <span className="font-bold text-neutral-200 tabular-nums">1$ = {exchangeRateBs} Bs</span>
           </div>
-
-          {/* Admin Dashboard Trigger */}
-          <button
-            onClick={() => setIsAdminModalOpen(true)}
-            title="Panel de Administración (Stock, Precios, Finanzas e Inventario)"
-            className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-mono font-medium text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 rounded-md hover:border-neutral-700 transition-colors cursor-pointer"
-          >
-            <Shield className="w-3.5 h-3.5 text-[#4ade80]" />
-            <span className="hidden sm:inline">Admin</span>
-          </button>
 
           {/* Cart Button */}
           <button
