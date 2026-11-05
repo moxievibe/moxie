@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --color-moxie-green: #003314;
+  --color-moxie-green-light: #005220;
+  --color-moxie-green-dark: #00220d;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+/* Custom scrollbars for clean streetwear feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #003314;
+}

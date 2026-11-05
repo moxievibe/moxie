@@ -1,0 +1,6 @@
+{
+  "name": "Aura Store - Tienda Online Profesional",
+  "description": "Plataforma completa de comercio electrónico para tiendas y negocios: catálogo interactivo, pedidos por WhatsApp, bolsa de compras, gestión de productos y personalización de marca.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
