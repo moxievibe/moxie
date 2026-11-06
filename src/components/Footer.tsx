@@ -61,26 +61,26 @@ export const Footer: React.FC = () => {
               <span className="font-bold text-xs text-white">@moxievibe</span>
             </a>
 
-            {/* TikTok: @moxievibe */}
+            {/* TikTok: @moxievibee */}
             <a
-              href="https://tiktok.com/@moxievibe"
+              href="https://tiktok.com/@moxievibee"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-900 hover:bg-[#003314] hover:text-[#4ade80] rounded border border-neutral-800 transition-colors"
             >
               <TikTokIcon className="w-4 h-4 text-[#4ade80]" />
-              <span className="font-bold text-xs text-white">@moxievibe</span>
+              <span className="font-bold text-xs text-white">@moxievibee</span>
             </a>
 
             {/* Direct WhatsApp Contact */}
             <a
-              href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent('Hola equipo MOXIE! Quiero comunicarme con ustedes.')}`}
+              href={`https://wa.me/584244578410?text=${encodeURIComponent('Hola equipo MOXIE! Quiero comunicarme con ustedes.')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#003314] hover:bg-[#005220] text-white rounded border border-[#005220] transition-colors"
             >
               <MessageCircle className="w-4 h-4 text-[#4ade80]" />
-              <span className="font-bold text-xs">WhatsApp: +{cleanPhone}</span>
+              <span className="font-bold text-xs">WhatsApp: 0424-4578410</span>
             </a>
           </div>
         </div>

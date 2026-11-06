@@ -16,10 +16,15 @@ export interface Product {
   name: string;
   category: string; // Default: 'Ropa' o 'Accesorios', expandable
   priceUSD: number;
+  promoCashUSD?: number; // Precio especial en divisas (efectivo/promo), ej. 25$
   originalPriceUSD?: number;
   images: string[]; // Gallery of photos
-  description: string;
-  technicalSpecs: string[];
+  description?: string;
+  technicalSpecs: string[]; // Especificaciones manuales (tela, compartimentos, etc.)
+  sizingType?: 'clothing' | 'accessory_dimensions'; // Prenda con tallas o accesorio con dimensiones
+  widthCm?: number; // Ancho en cm para bolsos/accesorios
+  lengthCm?: number; // Largo en cm para bolsos/accesorios
+  colors?: string[]; // Colores disponibles
   sizeGuide?: SizeGuideItem[];
   stockUnits?: number; // Total units in stock
   inStock: boolean; // "En Stock" | "Agotado"
@@ -91,6 +96,7 @@ export interface Order {
   totalBs: number;
   customer: OrderCustomer;
   delivery: OrderDelivery;
+  paymentMethod: 'bolivares_bcv' | 'divisas_cash'; // 'Bolívares (Tasa BCV)' | 'Divisas (Efectivo/Promo)'
   status: 'recibido' | 'en_proceso' | 'enviado' | 'entregado';
 }
 

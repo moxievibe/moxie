@@ -119,16 +119,35 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.name}
           </h3>
 
-          <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
-            {product.description}
-          </p>
+          {/* Colors / Specs / Dimensions Summary */}
+          {product.sizingType === 'accessory_dimensions' && product.widthCm && product.lengthCm ? (
+            <div className="mt-1 text-xs text-neutral-300 font-semibold">
+              Medidas: {product.widthCm} cm (Ancho) x {product.lengthCm} cm (Largo)
+            </div>
+          ) : null}
+
+          {product.colors && product.colors.length > 0 && (
+            <div className="mt-1 text-[11px] text-neutral-400">
+              Colores: <span className="text-neutral-200 font-medium">{product.colors.join(' · ')}</span>
+            </div>
+          )}
+
+          {product.technicalSpecs && product.technicalSpecs.length > 0 ? (
+            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
+              {product.technicalSpecs.join(' · ')}
+            </p>
+          ) : product.description ? (
+            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
+              {product.description}
+            </p>
+          ) : null}
         </div>
 
-        {/* Dual Pricing: USD ($) & Bs */}
-        <div className="mt-4 pt-3 border-t border-neutral-800 flex items-baseline justify-between">
+        {/* Dual Pricing: USD ($) & Bs, plus Promo Divisas in smaller text */}
+        <div className="mt-4 pt-3 border-t border-neutral-800 flex items-end justify-between">
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold font-mono text-white tabular-nums">
+              <span className="text-xl font-bold font-mono text-white tabular-nums">
                 {formatUSD(product.priceUSD)}
               </span>
               {product.originalPriceUSD && product.originalPriceUSD > product.priceUSD && (
@@ -138,9 +157,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               )}
             </div>
             {/* Automatic Bs conversion */}
-            <span className="text-xs font-mono text-[#4ade80] font-medium block tabular-nums">
+            <span className="text-xs font-mono text-[#4ade80] font-semibold block tabular-nums">
               ≈ {formatBs(product.priceUSD)}
             </span>
+            {/* Promo Divisas module */}
+            {product.promoCashUSD && product.promoCashUSD > 0 ? (
+              <span className="text-[11px] font-mono text-amber-400 font-bold block tabular-nums mt-0.5">
+                Promo Divisas ${product.promoCashUSD}
+              </span>
+            ) : null}
           </div>
 
           <span className="text-[11px] font-mono text-neutral-500 uppercase tracking-widest">

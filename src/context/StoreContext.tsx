@@ -95,8 +95,8 @@ interface StoreContextType {
 
   // Orders
   orders: Order[];
-  placeOrder: (customer: OrderCustomer, delivery: OrderDelivery) => Order;
-  generateWhatsAppOrderUrl: (customer: OrderCustomer, delivery: OrderDelivery) => string;
+  placeOrder: (customer: OrderCustomer, delivery: OrderDelivery, paymentMethod?: 'bolivares_bcv' | 'divisas_cash') => Order;
+  generateWhatsAppOrderUrl: (customer: OrderCustomer, delivery: OrderDelivery, paymentMethod?: 'bolivares_bcv' | 'divisas_cash') => string;
 
   // Notifications
   toasts: Toast[];
@@ -198,7 +198,60 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, 3200);
   };
 
-  // Sync to localStorage
+  // Helper to fetch entire store from server
+  const fetchStoreFromServer = async () => {
+    try {
+      const res = await fetch('/api/store');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.products)) setProducts(data.products);
+        if (data.settings) setSettings((prev) => ({ ...prev, ...data.settings }));
+        if (Array.isArray(data.financialRecords)) setFinancialRecords(data.financialRecords);
+        if (Array.isArray(data.orders)) setOrders(data.orders);
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // Global Real-Time SSE Sync across all connected devices + polling fallback
+  useEffect(() => {
+    fetchStoreFromServer();
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/events');
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.store) {
+            const { products: p, settings: s, financialRecords: f, orders: o } = payload.store;
+            if (Array.isArray(p)) setProducts(p);
+            if (s) setSettings((prev) => ({ ...prev, ...s }));
+            if (Array.isArray(f)) setFinancialRecords(f);
+            if (Array.isArray(o)) setOrders(o);
+          }
+        } catch {
+          // ignore keep-alive
+        }
+      };
+    } catch {
+      // EventSource fallback
+    }
+
+    // Polling sync every 8 seconds and on window focus
+    const interval = setInterval(fetchStoreFromServer, 8000);
+    const handleFocus = () => fetchStoreFromServer();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  // Sync to localStorage as offline cache backup
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
@@ -263,9 +316,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast('Sesión de administrador cerrada', 'info');
   };
 
-  const updateSettings = (newSettings: Partial<StoreSettings>) => {
+  const updateSettings = async (newSettings: Partial<StoreSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
-    showToast('Ajustes de MOXIE actualizados con éxito');
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings),
+      });
+      showToast('Ajustes actualizados globalmente en tiempo real');
+    } catch {
+      showToast('Ajustes guardados localmente', 'info');
+    }
   };
 
   const addCategory = (name: string) => {
@@ -293,45 +355,82 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast(`Categoría "${name}" eliminada`);
   };
 
-  const addProduct = (newProd: Omit<Product, 'id'>) => {
+  const addProduct = async (newProd: Omit<Product, 'id'>) => {
     const product: Product = {
       ...newProd,
       id: `moxie-prod-${Date.now()}`,
       stockUnits: newProd.stockUnits !== undefined ? newProd.stockUnits : 20,
     };
     setProducts((prev) => [product, ...prev]);
-    showToast(`"${product.name}" añadido al catálogo`);
+    showToast(`"${product.name}" guardado en el servidor global`);
+    try {
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+      });
+    } catch (err) {
+      console.error('Error saving product to server:', err);
+    }
   };
 
-  const updateProduct = (id: string, patch: Partial<Product>) => {
+  const updateProduct = async (id: string, patch: Partial<Product>) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    showToast('Prenda actualizada correctamente');
+    showToast('Prenda actualizada globalmente');
+    try {
+      await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+    } catch (err) {
+      console.error('Error updating product on server:', err);
+    }
   };
 
-  const updateProductPrice = (id: string, newPriceUSD: number) => {
+  const updateProductPrice = async (id: string, newPriceUSD: number) => {
+    const price = Number(newPriceUSD) || 1;
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, priceUSD: Number(newPriceUSD) || 1 } : p))
+      prev.map((p) => (p.id === id ? { ...p, priceUSD: price } : p))
     );
-    showToast('Precio actualizado correctamente');
+    showToast('Precio actualizado globalmente');
+    try {
+      await fetch(`/api/products/${id}/price`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceUSD: price }),
+      });
+    } catch (err) {
+      console.error('Error updating price on server:', err);
+    }
   };
 
-  const updateProductStockUnits = (id: string, units: number) => {
+  const updateProductStockUnits = async (id: string, units: number) => {
     const safeUnits = Math.max(0, Math.floor(units));
     setProducts((prev) =>
       prev.map((p) =>
         p.id === id ? { ...p, stockUnits: safeUnits, inStock: safeUnits > 0 ? p.inStock : false } : p
       )
     );
-    showToast('Unidades de inventario actualizadas');
+    showToast('Unidades actualizadas globalmente');
+    try {
+      await fetch(`/api/products/${id}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ units: safeUnits }),
+      });
+    } catch (err) {
+      console.error('Error updating stock on server:', err);
+    }
   };
 
-  const toggleProductStock = (id: string) => {
+  const toggleProductStock = async (id: string) => {
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === id) {
           const nextState = !p.inStock;
           showToast(
-            `"${p.name}" ahora está ${nextState ? 'EN STOCK' : 'AGOTADO'}`,
+            `"${p.name}" ahora está ${nextState ? 'EN STOCK' : 'AGOTADO'} (Global)`,
             nextState ? 'success' : 'info'
           );
           return { ...p, inStock: nextState };
@@ -339,29 +438,53 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return p;
       })
     );
+    try {
+      await fetch(`/api/products/${id}/toggle-stock`, { method: 'PATCH' });
+    } catch (err) {
+      console.error('Error toggling stock on server:', err);
+    }
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
-    showToast('Producto eliminado del catálogo');
+    showToast('Producto eliminado globalmente');
+    try {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Error deleting product on server:', err);
+    }
   };
 
   // Finances Operations
-  const addFinancialRecord = (rec: Omit<FinancialRecord, 'id'>) => {
+  const addFinancialRecord = async (rec: Omit<FinancialRecord, 'id'>) => {
     const newRecord: FinancialRecord = {
       ...rec,
       id: `fin-${Date.now()}`,
     };
     setFinancialRecords((prev) => [newRecord, ...prev]);
     showToast(
-      `${rec.type === 'ingreso' ? 'Ingreso' : 'Gasto'} de $${rec.amountUSD} registrado`,
+      `${rec.type === 'ingreso' ? 'Ingreso' : 'Gasto'} de $${rec.amountUSD} registrado globalmente`,
       'success'
     );
+    try {
+      await fetch('/api/finances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRecord),
+      });
+    } catch (err) {
+      console.error('Error adding finance record on server:', err);
+    }
   };
 
-  const deleteFinancialRecord = (id: string) => {
+  const deleteFinancialRecord = async (id: string) => {
     setFinancialRecords((prev) => prev.filter((r) => r.id !== id));
     showToast('Movimiento financiero eliminado');
+    try {
+      await fetch(`/api/finances/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Error deleting finance record on server:', err);
+    }
   };
 
   const totalIncomeUSD = financialRecords
@@ -381,33 +504,68 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     0
   );
 
-  const resetToDefaults = () => {
+  const resetToDefaults = async () => {
     setSettings(INITIAL_SETTINGS);
     setProducts(INITIAL_PRODUCTS);
     setFinancialRecords(INITIAL_FINANCIAL_RECORDS);
-    showToast('Datos de MOXIE restaurados a la configuración inicial');
+    showToast('Restaurando catálogo inicial en el servidor...');
+    try {
+      await fetch('/api/reset-defaults', { method: 'POST' });
+      showToast('Datos de MOXIE restaurados globalmente con éxito');
+    } catch (err) {
+      console.error('Error resetting defaults on server:', err);
+    }
   };
 
   // Delivery zones
-  const addDeliveryZone = (name: string, costUSD: number) => {
+  const addDeliveryZone = async (name: string, costUSD: number) => {
     const newZone: DeliveryZone = {
       id: `zone-${Date.now()}`,
       name: name.trim(),
       costUSD: Number(costUSD) || 0,
     };
-    updateSettings({ deliveryZones: [...settings.deliveryZones, newZone] });
+    setSettings((prev) => ({
+      ...prev,
+      deliveryZones: [...prev.deliveryZones, newZone],
+    }));
+    try {
+      await fetch('/api/delivery-zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newZone),
+      });
+      showToast(`Zona "${newZone.name}" guardada globalmente`);
+    } catch (err) {
+      console.error('Error adding delivery zone on server:', err);
+    }
   };
 
-  const updateDeliveryZone = (id: string, name: string, costUSD: number) => {
+  const updateDeliveryZone = async (id: string, name: string, costUSD: number) => {
     const updated = settings.deliveryZones.map((z) =>
       z.id === id ? { ...z, name: name.trim(), costUSD: Number(costUSD) || 0 } : z
     );
-    updateSettings({ deliveryZones: updated });
+    setSettings((prev) => ({ ...prev, deliveryZones: updated }));
+    try {
+      await fetch(`/api/delivery-zones/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), costUSD: Number(costUSD) || 0 }),
+      });
+      showToast('Zona de delivery actualizada globalmente');
+    } catch (err) {
+      console.error('Error updating delivery zone on server:', err);
+    }
   };
 
-  const deleteDeliveryZone = (id: string) => {
+  const deleteDeliveryZone = async (id: string) => {
     const updated = settings.deliveryZones.filter((z) => z.id !== id);
-    updateSettings({ deliveryZones: updated });
+    setSettings((prev) => ({ ...prev, deliveryZones: updated }));
+    try {
+      await fetch(`/api/delivery-zones/${id}`, { method: 'DELETE' });
+      showToast('Zona de delivery eliminada globalmente');
+    } catch (err) {
+      console.error('Error deleting delivery zone on server:', err);
+    }
   };
 
   // Currencies formatting
@@ -518,7 +676,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const cartSubtotalBs = cartSubtotalUSD * exchangeRateBs;
 
   // Place order
-  const placeOrder = (customer: OrderCustomer, delivery: OrderDelivery): Order => {
+  const placeOrder = (
+    customer: OrderCustomer,
+    delivery: OrderDelivery,
+    paymentMethod: 'bolivares_bcv' | 'divisas_cash' = 'bolivares_bcv'
+  ): Order => {
     const deliveryCostUSD = delivery.deliveryCostUSD || 0;
     const totalUSD = cartSubtotalUSD + deliveryCostUSD;
     const totalBs = totalUSD * exchangeRateBs;
@@ -540,10 +702,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       totalBs,
       customer,
       delivery,
+      paymentMethod,
       status: 'recibido',
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+
+    // Persist order to global backend
+    try {
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder),
+      });
+    } catch {
+      // offline
+    }
 
     // Automatically record income in store finances
     addFinancialRecord({
@@ -561,60 +735,83 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newOrder;
   };
 
-  // Generate structured WhatsApp message
+  // Generate structured WhatsApp message strictly following requested schema
   const generateWhatsAppOrderUrl = (
     customer: OrderCustomer,
-    delivery: OrderDelivery
+    delivery: OrderDelivery,
+    paymentMethod: 'bolivares_bcv' | 'divisas_cash' = 'bolivares_bcv'
   ): string => {
     const deliveryCostUSD = delivery.deliveryCostUSD || 0;
     const totalUSD = cartSubtotalUSD + deliveryCostUSD;
     const totalBs = totalUSD * exchangeRateBs;
 
-    const itemsText = cart
+    // Prendas seleccionadas
+    const itemsFormatted = cart
       .map((item) => {
-        const variants = Object.entries(item.selectedVariants)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join(', ');
-        return `▫️ *${item.quantity}x ${item.product.name}*\n   (${variants})\n   Precio: ${formatUSD(item.product.priceUSD * item.quantity)} [${formatBs(item.product.priceUSD * item.quantity)}]`;
+        const color = item.selectedVariants['Color'] || '';
+        const sizeOrDim = item.selectedVariants['Talla'] || item.selectedVariants['Medidas'] || '';
+        const specsList = [
+          sizeOrDim ? `Talla/Medidas: ${sizeOrDim}` : '',
+          item.product.widthCm && item.product.lengthCm ? `Ancho: ${item.product.widthCm}cm, Largo: ${item.product.lengthCm}cm` : '',
+          item.product.technicalSpecs && item.product.technicalSpecs.length > 0 ? item.product.technicalSpecs.join(', ') : '',
+        ].filter(Boolean);
+
+        const productNameWithColor = color
+          ? `${item.quantity}x ${item.product.name} (Color: ${color})`
+          : `${item.quantity}x ${item.product.name}`;
+
+        const specsText = specsList.length > 0 ? specsList.join(' | ') : 'Estándar';
+
+        return `- Producto: ${productNameWithColor}\n- Especificaciones: ${specsText}`;
       })
       .join('\n\n');
 
-    let deliveryText = '';
+    // Método de entrega
+    let deliveryMethod = '';
+    let deliveryAddress = '';
+    let deliveryZone = '';
+    let deliveryCost = '';
+
     if (delivery.type === 'pickup') {
-      deliveryText = `📍 *MÉTODO: PICK UP EN PERSONA*\n- Ubicación: Tocuyito, Valencia, Edo. Carabobo\n- Costo: GRATIS`;
+      deliveryMethod = 'Pick Up';
+      deliveryAddress = 'Tocuyito, Valencia, Edo. Carabobo (Punto de retiro oficial)';
+      deliveryZone = 'Tocuyito';
+      deliveryCost = 'Gratis ($0)';
     } else if (delivery.type === 'delivery') {
-      deliveryText = `🛵 *MÉTODO: DELIVERY EN VALENCIA*\n- Zona: ${delivery.deliveryZoneName || 'Valencia'}\n- Dirección: ${delivery.deliveryAddress || 'Por coordinar'}\n- Costo de Delivery: ${formatUSD(deliveryCostUSD)} [${formatBs(deliveryCostUSD)}]`;
+      deliveryMethod = 'Delivery';
+      deliveryAddress = delivery.deliveryAddress || 'Dirección por confirmar en Valencia';
+      deliveryZone = delivery.deliveryZoneName || 'Valencia';
+      deliveryCost = `${formatUSD(deliveryCostUSD)} (~${formatBs(deliveryCostUSD)}) [Aproximado]`;
     } else if (delivery.type === 'agency') {
       const a = delivery.agencyData;
-      deliveryText = `📦 *MÉTODO: ENVÍO POR AGENCIA (${a?.agency || 'MRW / Tealca'})*\n` +
-        `- Destinatario: ${a?.firstName} ${a?.lastName}\n` +
-        `- Cédula: ${a?.idNumber}\n` +
-        `- Teléfono: ${a?.phone}\n` +
-        `- Agencia seleccionada: ${a?.agency}\n` +
-        `- Dirección agencia destino: ${a?.destinationAddress}\n` +
-        `- Flete: Cobro en destino por la agencia`;
+      deliveryMethod = `Envíos Nacionales (${a?.agency || 'MRW / Tealca'})`;
+      deliveryAddress = a?.destinationAddress || 'Dirección de la agencia destino';
+      deliveryZone = `${a?.agency} (Destinatario: ${a?.firstName} ${a?.lastName}, CI: ${a?.idNumber}, Telf: ${a?.phone})`;
+      deliveryCost = 'Cobro en destino por agencia';
     }
 
+    const paymentLabel =
+      paymentMethod === 'divisas_cash'
+        ? 'Divisas (Efectivo/Promo)'
+        : 'Bolívares (Tasa BCV)';
+
     const message =
-      `🔥 *NUEVO PEDIDO - MOXIE STREETWEAR* 🔥\n` +
-      `==============================\n\n` +
-      `👤 *DATOS DEL CLIENTE*\n` +
+      `*NUEVO PEDIDO MOXIE*\n\n` +
+      `*Datos del cliente*\n` +
       `- Nombre: ${customer.name}\n` +
-      `- Teléfono: ${customer.phone}\n` +
-      (customer.notes ? `- Notas: ${customer.notes}\n` : '') +
-      `\n==============================\n\n` +
-      `🛒 *PRENDAS SELECCIONADAS*\n\n${itemsText}\n\n` +
-      `==============================\n\n` +
-      `${deliveryText}\n\n` +
-      `==============================\n` +
-      `💰 *RESUMEN DE PAGO*\n` +
-      `- Subtotal prendas: ${formatUSD(cartSubtotalUSD)} [${formatBs(cartSubtotalUSD)}]\n` +
-      (deliveryCostUSD > 0
-        ? `- Delivery: ${formatUSD(deliveryCostUSD)} [${formatBs(deliveryCostUSD)}]\n`
-        : '') +
-      `- Tasa del día (BCV): 1$ = ${exchangeRateBs} Bs\n` +
-      `*TOTAL A PAGAR:* \n👉 *${formatUSD(totalUSD)} USD*\n👉 *${formatBs(totalUSD)} Bs*\n\n` +
-      `_Hola equipo MOXIE! Acabo de armar este pedido en la web, ¿me podrían indicar los datos bancarios / pago móvil / Zelle para transferir? Gracias!_`;
+      `- Teléfono: ${customer.phone}\n\n` +
+      `*Prendas seleccionadas*\n` +
+      `${itemsFormatted}\n\n` +
+      `*Método de entrega*\n` +
+      `- Método: ${deliveryMethod}\n` +
+      `- Dirección: ${deliveryAddress}\n` +
+      `- Zona: ${deliveryZone}\n` +
+      `- Costo: ${deliveryCost}\n\n` +
+      `*Resumen de Pago*\n` +
+      `- Método de pago: ${paymentLabel}\n` +
+      `- Total de prendas: ${formatUSD(cartSubtotalUSD)} (${formatBs(cartSubtotalUSD)})\n` +
+      `- Total de entrega: ${deliveryCostUSD > 0 ? `${formatUSD(deliveryCostUSD)} (${formatBs(deliveryCostUSD)})` : 'Gratis'}\n` +
+      `- *TOTAL A PAGAR*: ${formatUSD(totalUSD)} y su equivalente en Bs. ${formatBs(totalUSD)}`;
 
     const encoded = encodeURIComponent(message);
     const cleanNumber = settings.whatsappNumber.replace(/[^0-9]/g, '');

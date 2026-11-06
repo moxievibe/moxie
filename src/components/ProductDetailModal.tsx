@@ -169,8 +169,8 @@ export const ProductDetailModal: React.FC = () => {
                 {product.name}
               </h2>
 
-              {/* Dual Price Display */}
-              <div className="mb-6 p-3 bg-neutral-950 rounded-lg border border-neutral-800">
+              {/* Dual Price Display & Promo Divisas */}
+              <div className="mb-6 p-4 bg-neutral-950 rounded-lg border border-neutral-800">
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl font-extrabold font-mono text-white tabular-nums">
                     {formatUSD(product.priceUSD)}
@@ -184,12 +184,35 @@ export const ProductDetailModal: React.FC = () => {
                 <div className="text-sm font-mono text-[#4ade80] mt-1 font-semibold tabular-nums">
                   ≈ {formatBs(product.priceUSD)} <span className="text-[11px] text-neutral-400 font-normal">(Tasa del día: 1$ = {settings.exchangeRateBs} Bs)</span>
                 </div>
+                {/* Promo Divisas Module */}
+                {product.promoCashUSD && product.promoCashUSD > 0 && (
+                  <div className="mt-2 pt-2 border-t border-neutral-900 flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono font-bold text-xs">
+                      Promo Divisas ${product.promoCashUSD}
+                    </span>
+                    <span className="text-[11px] text-neutral-400">
+                      Precio especial en efectivo divisas
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Description */}
-              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed mb-6">
-                {product.description}
-              </p>
+              {/* Accessory Dimensions Display (for Puffer Bags & Accessories) */}
+              {product.sizingType === 'accessory_dimensions' && product.widthCm && product.lengthCm && (
+                <div className="mb-6 p-3 bg-neutral-900/60 rounded-lg border border-neutral-800 flex items-center justify-between text-xs">
+                  <span className="text-neutral-400 uppercase tracking-wider font-bold">Dimensiones:</span>
+                  <span className="text-white font-mono font-bold">
+                    {product.widthCm} cm (Ancho) × {product.lengthCm} cm (Largo)
+                  </span>
+                </div>
+              )}
+
+              {/* Optional Description if exists */}
+              {product.description && (
+                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed mb-6">
+                  {product.description}
+                </p>
+              )}
 
               {/* Variant Selectors (Talla / Color) */}
               {product.variants && product.variants.length > 0 && (

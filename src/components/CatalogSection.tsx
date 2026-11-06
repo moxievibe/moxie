@@ -25,7 +25,9 @@ export const CatalogSection: React.FC = () => {
     const matchesSearch =
       searchQuery.trim() === '' ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+      (product.technicalSpecs?.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())) ?? false) ||
+      (product.colors?.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())) ?? false) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });

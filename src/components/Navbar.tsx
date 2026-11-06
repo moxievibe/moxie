@@ -91,12 +91,12 @@ export const Navbar: React.FC = () => {
             </a>
 
             <a
-              href="https://tiktok.com/@moxievibe"
+              href="https://tiktok.com/@moxievibee"
               target="_blank"
               rel="noopener noreferrer"
-              title="TikTok @moxievibe"
+              title="TikTok @moxievibee"
               className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors"
-              aria-label="TikTok de MOXIE @moxievibe"
+              aria-label="TikTok de MOXIE @moxievibee"
             >
               <TikTokIcon className="w-4 h-4" />
             </a>

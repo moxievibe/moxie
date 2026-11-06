@@ -33,7 +33,7 @@ export const CheckoutModal: React.FC = () => {
   // Customer contact info
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'bolivares_bcv' | 'divisas_cash'>('bolivares_bcv');
 
   // Delivery method: exactly 3 choices
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup');
@@ -102,7 +102,6 @@ export const CheckoutModal: React.FC = () => {
     const customer: OrderCustomer = {
       name: customerName.trim(),
       phone: customerPhone.trim(),
-      notes: customerNotes.trim(),
     };
 
     let delivery: OrderDelivery;
@@ -133,10 +132,10 @@ export const CheckoutModal: React.FC = () => {
     }
 
     // 1. Save order to app state & order history
-    placeOrder(customer, delivery);
+    placeOrder(customer, delivery, paymentMethod);
 
     // 2. Open structured WhatsApp chat
-    const waUrl = generateWhatsAppOrderUrl(customer, delivery);
+    const waUrl = generateWhatsAppOrderUrl(customer, delivery, paymentMethod);
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -371,10 +370,10 @@ export const CheckoutModal: React.FC = () => {
                 </div>
 
                 {currentZone && (
-                  <div className="p-2.5 bg-neutral-950 rounded border border-[#005220] flex items-center justify-between text-[11px]">
-                    <span className="text-neutral-300">Costo de delivery para {currentZone.name}:</span>
+                  <div className="p-3 bg-neutral-950 rounded border border-[#005220] flex items-center justify-between text-xs font-mono">
+                    <span className="text-neutral-300">Costo aproximado para {currentZone.name}:</span>
                     <span className="font-bold text-[#4ade80] tabular-nums">
-                      +{formatUSD(currentZone.costUSD)} ({formatBs(currentZone.costUSD)})
+                      ~{formatUSD(currentZone.costUSD)} (~{formatBs(currentZone.costUSD)})
                     </span>
                   </div>
                 )}
@@ -530,18 +529,52 @@ export const CheckoutModal: React.FC = () => {
             )}
           </div>
 
-          {/* Section 3: Notes (Optional) */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-              Notas o instrucciones adicionales para el equipo MOXIE
+          {/* Section 3: Método de Pago (Obligatorio) */}
+          <div className="space-y-2">
+            <label className="block text-xs font-mono uppercase font-bold text-neutral-300">
+              Método de Pago *
             </label>
-            <input
-              type="text"
-              placeholder="Ej. Preguntar por disponibilidad de otro color, empaque para regalo..."
-              value={customerNotes}
-              onChange={(e) => setCustomerNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-mono bg-neutral-900 border border-neutral-800 rounded-md text-white placeholder:text-neutral-600 focus:outline-hidden focus:border-[#005220]"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('bolivares_bcv')}
+                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                  paymentMethod === 'bolivares_bcv'
+                    ? 'bg-[#003314] border-[#4ade80] text-white shadow-sm'
+                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold uppercase text-white">Bolívares (Tasa BCV)</span>
+                  {paymentMethod === 'bolivares_bcv' && (
+                    <span className="w-2 h-2 rounded-full bg-[#4ade80]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-mono">
+                  Pago Móvil o transferencia nacional a la tasa oficial del día ({exchangeRateBs} Bs/$).
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('divisas_cash')}
+                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                  paymentMethod === 'divisas_cash'
+                    ? 'bg-[#003314] border-[#4ade80] text-white shadow-sm'
+                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold uppercase text-white">Divisas (Efectivo/Promo)</span>
+                  {paymentMethod === 'divisas_cash' && (
+                    <span className="w-2 h-2 rounded-full bg-[#4ade80]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-mono">
+                  Dólares en efectivo contra entrega o Zelle. Válido para promociones en divisas.
+                </p>
+              </button>
+            </div>
           </div>
 
           {/* Section 4: Final Summary of Payment (USD & Bs) */}

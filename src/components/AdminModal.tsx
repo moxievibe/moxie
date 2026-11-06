@@ -8,19 +8,19 @@ import {
   RotateCcw,
   Check,
   TrendingUp,
-  Package,
-  Layers,
   MapPin,
   Lock,
   Unlock,
   Upload,
   DollarSign,
-  ArrowDownRight,
-  ArrowUpRight,
   Wallet,
   ImageIcon,
+  Pencil,
+  Tag,
+  Ruler,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { Product } from '../types';
 
 export const AdminModal: React.FC = () => {
   const {
@@ -33,6 +33,7 @@ export const AdminModal: React.FC = () => {
     updateSettings,
     products,
     addProduct,
+    updateProduct,
     updateProductPrice,
     updateProductStockUnits,
     deleteProduct,
@@ -51,6 +52,7 @@ export const AdminModal: React.FC = () => {
     deleteCategory,
     deliveryZones,
     addDeliveryZone,
+    updateDeliveryZone,
     deleteDeliveryZone,
     orders,
     formatUSD,
@@ -59,7 +61,7 @@ export const AdminModal: React.FC = () => {
   } = useStore();
 
   const [passwordInput, setPasswordInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'inventory' | 'finances' | 'rates-banner' | 'add-product' | 'orders'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'product-form' | 'delivery-zones' | 'finances' | 'rates-banner' | 'orders'>('inventory');
 
   // Editing product prices inline
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -68,6 +70,32 @@ export const AdminModal: React.FC = () => {
   // Editing product stock units inline
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
   const [tempStockValue, setTempStockValue] = useState<number>(0);
+
+  // Editing delivery zones inline
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+  const [tempZoneName, setTempZoneName] = useState<string>('');
+  const [tempZoneCost, setTempZoneCost] = useState<number>(0);
+
+  // New delivery zone form
+  const [newZoneName, setNewZoneName] = useState('');
+  const [newZoneCostUSD, setNewZoneCostUSD] = useState<number>(3);
+
+  // New / Edit product form state
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [prodName, setProdName] = useState('');
+  const [prodCategory, setProdCategory] = useState(categories[0] || 'Ropa');
+  const [prodPriceUSD, setProdPriceUSD] = useState<number>(35);
+  const [prodPromoCashUSD, setProdPromoCashUSD] = useState<string>('');
+  const [prodStockUnits, setProdStockUnits] = useState<number>(20);
+  const [prodInStock, setProdInStock] = useState<boolean>(true);
+  const [prodColors, setProdColors] = useState<string>('Negro, Blanco, Verde Moxie');
+  const [prodSizingType, setProdSizingType] = useState<'clothing' | 'accessory_dimensions'>('clothing');
+  const [prodSelectedSizes, setProdSelectedSizes] = useState<string[]>(['S', 'M', 'L', 'XL']);
+  const [prodWidthCm, setProdWidthCm] = useState<string>('');
+  const [prodLengthCm, setProdLengthCm] = useState<string>('');
+  const [prodSpecs, setProdSpecs] = useState<string>('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
+  const [prodImagesList, setProdImagesList] = useState<string[]>([]);
+  const [prodImageInput, setProdImageInput] = useState('');
 
   // New finance record form
   const [finType, setFinType] = useState<'ingreso' | 'gasto'>('ingreso');
@@ -79,17 +107,6 @@ export const AdminModal: React.FC = () => {
   const [tempRate, setTempRate] = useState<number>(exchangeRateBs);
   const [tempBannerUrl, setTempBannerUrl] = useState<string>(settings.heroBannerImage || '');
   const [tempWhatsApp, setTempWhatsApp] = useState(settings.whatsappNumber);
-
-  // New product form
-  const [newProdName, setNewProdName] = useState('');
-  const [newProdCategory, setNewProdCategory] = useState(categories[0] || 'Ropa');
-  const [newProdPriceUSD, setNewProdPriceUSD] = useState<number>(35);
-  const [newProdStockUnits, setNewProdStockUnits] = useState<number>(20);
-  const [newProdImageInput, setNewProdImageInput] = useState('');
-  const [newProdImagesList, setNewProdImagesList] = useState<string[]>([]);
-  const [newProdDesc, setNewProdDesc] = useState('');
-  const [newProdSpecs, setNewProdSpecs] = useState('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
-  const [newProdInStock, setNewProdInStock] = useState(true);
 
   if (!isAdminModalOpen) return null;
 
@@ -107,6 +124,149 @@ export const AdminModal: React.FC = () => {
   const handleSaveStockUnits = (id: string) => {
     updateProductStockUnits(id, tempStockValue);
     setEditingStockId(null);
+  };
+
+  // Open Product Form in Edit Mode
+  const startEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setProdName(p.name);
+    setProdCategory(p.category);
+    setProdPriceUSD(p.priceUSD);
+    setProdPromoCashUSD(p.promoCashUSD ? String(p.promoCashUSD) : '');
+    setProdStockUnits(p.stockUnits ?? 0);
+    setProdInStock(p.inStock);
+
+    // Extract colors
+    if (p.colors && p.colors.length > 0) {
+      setProdColors(p.colors.join(', '));
+    } else {
+      const colorVar = p.variants?.find((v) => v.name.toLowerCase() === 'color');
+      setProdColors(colorVar ? colorVar.options.join(', ') : 'Negro, Blanco');
+    }
+
+    // Sizing type & dimensions
+    const isAccessory = p.sizingType === 'accessory_dimensions' || (p.widthCm !== undefined && p.lengthCm !== undefined);
+    setProdSizingType(isAccessory ? 'accessory_dimensions' : 'clothing');
+    setProdWidthCm(p.widthCm ? String(p.widthCm) : '');
+    setProdLengthCm(p.lengthCm ? String(p.lengthCm) : '');
+
+    // Sizes
+    const tallaVar = p.variants?.find((v) => v.name.toLowerCase() === 'talla');
+    setProdSelectedSizes(tallaVar ? tallaVar.options : ['S', 'M', 'L', 'XL']);
+
+    // Technical specs (manual)
+    setProdSpecs(p.technicalSpecs ? p.technicalSpecs.join('\n') : '');
+
+    // Images
+    setProdImagesList(p.images || []);
+    setProdImageInput('');
+
+    setActiveTab('product-form');
+  };
+
+  // Open Product Form in Create Mode
+  const startCreateProduct = () => {
+    setEditingProductId(null);
+    setProdName('');
+    setProdCategory(categories[0] || 'Ropa');
+    setProdPriceUSD(35);
+    setProdPromoCashUSD('');
+    setProdStockUnits(20);
+    setProdInStock(true);
+    setProdColors('Negro, Blanco, Verde Moxie');
+    setProdSizingType('clothing');
+    setProdSelectedSizes(['S', 'M', 'L', 'XL']);
+    setProdWidthCm('');
+    setProdLengthCm('');
+    setProdSpecs('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
+    setProdImagesList([]);
+    setProdImageInput('');
+    setActiveTab('product-form');
+  };
+
+  // Save Product (Create or Edit)
+  const handleSaveProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prodName.trim()) return;
+
+    const specsArray = prodSpecs
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const colorsArray = prodColors
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+
+    const promoCashNum = prodPromoCashUSD.trim() ? Number(prodPromoCashUSD) : undefined;
+    const widthNum = prodWidthCm.trim() ? Number(prodWidthCm) : undefined;
+    const lengthNum = prodLengthCm.trim() ? Number(prodLengthCm) : undefined;
+
+    const imagesToUse =
+      prodImagesList.length > 0
+        ? prodImagesList
+        : ['/assets/aistudio/logo_aad0827b.jpg'];
+
+    // Construct variants array
+    const variantsList = [];
+    if (prodSizingType === 'clothing' && prodSelectedSizes.length > 0) {
+      variantsList.push({ name: 'Talla', options: prodSelectedSizes });
+    }
+    if (colorsArray.length > 0) {
+      variantsList.push({ name: 'Color', options: colorsArray });
+    }
+
+    if (editingProductId) {
+      // Update existing product
+      updateProduct(editingProductId, {
+        name: prodName.trim(),
+        category: prodCategory,
+        priceUSD: Number(prodPriceUSD) || 1,
+        promoCashUSD: promoCashNum,
+        stockUnits: Number(prodStockUnits) || 0,
+        inStock: prodInStock,
+        images: imagesToUse,
+        technicalSpecs: specsArray,
+        colors: colorsArray,
+        sizingType: prodSizingType,
+        widthCm: widthNum,
+        lengthCm: lengthNum,
+        variants: variantsList,
+      });
+    } else {
+      // Add new product
+      addProduct({
+        name: prodName.trim(),
+        category: prodCategory,
+        priceUSD: Number(prodPriceUSD) || 1,
+        promoCashUSD: promoCashNum,
+        stockUnits: Number(prodStockUnits) || 0,
+        inStock: prodInStock,
+        images: imagesToUse,
+        technicalSpecs: specsArray,
+        colors: colorsArray,
+        sizingType: prodSizingType,
+        widthCm: widthNum,
+        lengthCm: lengthNum,
+        variants: variantsList,
+      });
+    }
+
+    setActiveTab('inventory');
+  };
+
+  const handleAddDeliveryZone = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newZoneName.trim()) return;
+    addDeliveryZone(newZoneName.trim(), Number(newZoneCostUSD) || 0);
+    setNewZoneName('');
+    setNewZoneCostUSD(3);
+  };
+
+  const handleSaveDeliveryZone = (id: string) => {
+    updateDeliveryZone(id, tempZoneName, tempZoneCost);
+    setEditingZoneId(null);
   };
 
   const handleAddFinance = (e: React.FormEvent) => {
@@ -154,7 +314,7 @@ export const AdminModal: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          setNewProdImagesList((prev) => [...prev, reader.result as string]);
+          setProdImagesList((prev) => [...prev, reader.result as string]);
         }
       };
       reader.readAsDataURL(file);
@@ -162,47 +322,16 @@ export const AdminModal: React.FC = () => {
   };
 
   const handleAddImageUrl = () => {
-    if (newProdImageInput.trim()) {
-      setNewProdImagesList((prev) => [...prev, newProdImageInput.trim()]);
-      setNewProdImageInput('');
+    if (prodImageInput.trim()) {
+      setProdImagesList((prev) => [...prev, prodImageInput.trim()]);
+      setProdImageInput('');
     }
   };
 
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProdName.trim()) return;
-
-    const specsArray = newProdSpecs.split('\n').map((s) => s.trim()).filter(Boolean);
-    const imagesToUse =
-      newProdImagesList.length > 0
-        ? newProdImagesList
-        : ['/src/assets/images/moxie_tshirt_black_1793892891603.jpg'];
-
-    addProduct({
-      name: newProdName.trim(),
-      category: newProdCategory,
-      priceUSD: Number(newProdPriceUSD) || 10,
-      stockUnits: Number(newProdStockUnits) || 0,
-      images: imagesToUse,
-      description: newProdDesc.trim() || 'Prenda esencial de la colección oficial MOXIE.',
-      technicalSpecs: specsArray.length > 0 ? specsArray : ['Algodón Premium Streetwear', 'Corte relajado'],
-      inStock: newProdInStock,
-      variants: [
-        { name: 'Talla', options: ['S', 'M', 'L', 'XL'] },
-        { name: 'Color', options: ['Verde Moxie', 'Negro Ébano'] },
-      ],
-      sizeGuide: [
-        { size: 'S', chestCm: 56, lengthCm: 70 },
-        { size: 'M', chestCm: 59, lengthCm: 73 },
-        { size: 'L', chestCm: 62, lengthCm: 76 },
-        { size: 'XL', chestCm: 65, lengthCm: 79 },
-      ],
-    });
-
-    setNewProdName('');
-    setNewProdDesc('');
-    setNewProdImagesList([]);
-    setActiveTab('inventory');
+  const toggleSizeSelection = (size: string) => {
+    setProdSelectedSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+    );
   };
 
   return (
@@ -227,7 +356,7 @@ export const AdminModal: React.FC = () => {
               </h2>
               {isAdminAuthenticated && (
                 <p className="text-xs text-neutral-400">
-                  Inventario, Control de Stock, Precios en USD, Tasa Bs y Registro de Ingresos/Gastos
+                  Inventario, Edición de Prendas, Zonas de Delivery, Tasa Bs y Finanzas
                 </p>
               )}
             </div>
@@ -282,7 +411,33 @@ export const AdminModal: React.FC = () => {
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Inventario & Precios ({products.length})
+                Inventario ({products.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={startCreateProduct}
+                className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'product-form'
+                    ? 'border-[#4ade80] text-white'
+                    : 'border-transparent text-neutral-400 hover:text-white'
+                }`}
+              >
+                {editingProductId ? <Pencil className="w-3.5 h-3.5 text-amber-400" /> : <Plus className="w-3.5 h-3.5 text-[#4ade80]" />}
+                <span>{editingProductId ? 'Editar Prenda' : 'Nueva Prenda'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('delivery-zones')}
+                className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'delivery-zones'
+                    ? 'border-[#4ade80] text-white'
+                    : 'border-transparent text-neutral-400 hover:text-white'
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#4ade80]" />
+                <span>Zonas de Delivery ({deliveryZones.length})</span>
               </button>
 
               <button
@@ -307,20 +462,7 @@ export const AdminModal: React.FC = () => {
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
-                Tasa Bs & Foto Portada
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('add-product')}
-                className={`py-3 px-3 border-b-2 font-bold uppercase whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'add-product'
-                    ? 'border-[#4ade80] text-white'
-                    : 'border-transparent text-neutral-400 hover:text-white'
-                }`}
-              >
-                <Plus className="w-3.5 h-3.5 text-[#4ade80]" />
-                <span>Agregar Prenda</span>
+                Tasa Bs & Ajustes
               </button>
 
               <button
@@ -336,7 +478,7 @@ export const AdminModal: React.FC = () => {
               </button>
             </div>
 
-            {/* TAB 1: Inventory & Stock with Direct Price Editing */}
+            {/* TAB 1: Inventory & Stock with Direct Edit Actions */}
             {activeTab === 'inventory' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-5 font-mono text-xs">
                 {/* Inventory KPI Summary Cards */}
@@ -362,11 +504,11 @@ export const AdminModal: React.FC = () => {
 
                 <div className="text-neutral-400 text-[11px] flex items-center justify-between">
                   <span>
-                    Edita el precio en USD, modifica las unidades disponibles o cambia el estado (En Stock / Agotado) con un clic:
+                    Edita precios, unidades, disponibilidad o presiona <strong>Editar</strong> para modificar todos los datos de la prenda:
                   </span>
                   <button
-                    onClick={() => setActiveTab('add-product')}
-                    className="px-3 py-1 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200"
+                    onClick={startCreateProduct}
+                    className="px-3 py-1 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200 cursor-pointer"
                   >
                     + Nueva Prenda
                   </button>
@@ -384,9 +526,9 @@ export const AdminModal: React.FC = () => {
                         className="p-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 hover:bg-neutral-900 transition-colors"
                       >
                         {/* Thumbnail & Name */}
-                        <div className="flex items-center gap-3 min-w-[220px]">
+                        <div className="flex items-center gap-3 min-w-[200px]">
                           <img
-                            src={p.images?.[0] || '/src/assets/images/moxie_tshirt_black_1793892891603.jpg'}
+                            src={p.images?.[0] || '/assets/aistudio/logo_aad0827b.jpg'}
                             alt={p.name}
                             referrerPolicy="no-referrer"
                             className="w-12 h-12 object-cover rounded bg-black shrink-0 border border-neutral-800"
@@ -396,12 +538,12 @@ export const AdminModal: React.FC = () => {
                               {p.name}
                             </h4>
                             <span className="text-[11px] text-neutral-400 block">
-                              {p.category}
+                              {p.category} {p.promoCashUSD ? `· Promo: $${p.promoCashUSD}` : ''}
                             </span>
                           </div>
                         </div>
 
-                        {/* Price in USD (Editable) */}
+                        {/* Price in USD (Editable inline) */}
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-neutral-500 uppercase">Precio:</span>
                           {isEditingPrice ? (
@@ -431,14 +573,14 @@ export const AdminModal: React.FC = () => {
                                 setTempPriceValue(p.priceUSD);
                               }}
                               className="font-bold text-white hover:text-[#4ade80] hover:underline cursor-pointer tabular-nums text-xs"
-                              title="Clic para editar precio"
+                              title="Clic para editar precio rápido"
                             >
                               {formatUSD(p.priceUSD)} <span className="text-[10px] text-neutral-500">({formatBs(p.priceUSD)})</span>
                             </button>
                           )}
                         </div>
 
-                        {/* Inventory Units (Editable) */}
+                        {/* Inventory Units (Editable inline) */}
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-neutral-500 uppercase">Unidades:</span>
                           {isEditingStock ? (
@@ -474,19 +616,29 @@ export const AdminModal: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Availability Toggle Button */}
-                        <div className="flex items-center gap-3 shrink-0">
+                        {/* Actions: Stock Toggle, Full Edit, Delete */}
+                        <div className="flex items-center gap-2.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => toggleProductStock(p.id)}
-                            className={`px-3 py-1.5 text-[11px] font-bold uppercase rounded border transition-all cursor-pointer ${
+                            className={`px-2.5 py-1 text-[11px] font-bold uppercase rounded border transition-all cursor-pointer ${
                               p.inStock
                                 ? 'bg-[#003314] text-[#4ade80] border-[#005220] hover:bg-neutral-800 hover:text-neutral-300'
                                 : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-[#003314] hover:text-[#4ade80]'
                             }`}
-                            title="Clic para cambiar entre Disponible y Agotado"
+                            title="Cambiar disponibilidad"
                           >
-                            {p.inStock ? '✓ DISPONIBLE' : '✕ AGOTADO'}
+                            {p.inStock ? '✓ EN STOCK' : '✕ AGOTADO'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => startEditProduct(p)}
+                            title="Editar prenda completa"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold uppercase bg-neutral-800 hover:bg-[#003314] hover:text-[#4ade80] text-neutral-200 border border-neutral-700 rounded transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Editar</span>
                           </button>
 
                           <button
@@ -505,7 +657,511 @@ export const AdminModal: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 2: Finances (Ingresos y Gastos) */}
+            {/* TAB 2: Complete Product Create / Edit Form */}
+            {activeTab === 'product-form' && (
+              <form onSubmit={handleSaveProduct} className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-5 font-mono text-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-[#4ade80]" />
+                    <h4 className="font-bold uppercase text-white text-sm">
+                      {editingProductId ? `Editar Prenda: ${prodName}` : 'Agregar Nueva Prenda a MOXIE'}
+                    </h4>
+                  </div>
+                  {editingProductId && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('inventory')}
+                      className="text-neutral-400 hover:text-white text-xs underline cursor-pointer"
+                    >
+                      Cancelar Edición
+                    </button>
+                  )}
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                    Nombre de la Prenda o Accesorio *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. MOXIE Puffer Bag Black / Heavyweight Hoodie"
+                    value={prodName}
+                    onChange={(e) => setProdName(e.target.value)}
+                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
+                    required
+                  />
+                </div>
+
+                {/* Category, Prices & Stock */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                      Categoría
+                    </label>
+                    <select
+                      value={prodCategory}
+                      onChange={(e) => setProdCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
+                    >
+                      {categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                      Precio Regular USD ($) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={prodPriceUSD}
+                      onChange={(e) => setProdPriceUSD(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
+                      required
+                    />
+                    <span className="text-[10px] text-[#4ade80] mt-0.5 block">
+                      ≈ {formatBs(prodPriceUSD)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block uppercase text-amber-400 mb-1 font-bold">
+                      Promo Divisas USD (Opcional)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      placeholder="Ej. 25"
+                      value={prodPromoCashUSD}
+                      onChange={(e) => setProdPromoCashUSD(e.target.value)}
+                      className="w-full px-3 py-2 bg-neutral-900 border border-amber-500/30 rounded text-amber-300 placeholder:text-neutral-600"
+                    />
+                    <span className="text-[10px] text-neutral-400 mt-0.5 block">
+                      Efectivo en divisas (se muestra en pequeño)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                      Unidades Inventario
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={prodStockUnits}
+                      onChange={(e) => setProdStockUnits(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Colors Field */}
+                <div>
+                  <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                    Colores Disponibles (separados por coma) *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Negro, Blanco, Verde Bosque (#003314)"
+                    value={prodColors}
+                    onChange={(e) => setProdColors(e.target.value)}
+                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white placeholder:text-neutral-600"
+                    required
+                  />
+                  <span className="text-[10px] text-neutral-500 mt-0.5 block">
+                    El cliente podrá seleccionar estos colores al ordenar la prenda o accesorio.
+                  </span>
+                </div>
+
+                {/* Sizing Type Selector (Clothing vs Accessory Dimensions) */}
+                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
+                  <label className="block uppercase text-neutral-300 font-bold">
+                    Tipo de Medida del Producto *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setProdSizingType('clothing')}
+                      className={`p-3 rounded border text-left cursor-pointer transition-all ${
+                        prodSizingType === 'clothing'
+                          ? 'border-[#4ade80] bg-[#003314] text-white'
+                          : 'border-neutral-800 bg-neutral-950 text-neutral-400'
+                      }`}
+                    >
+                      <div className="font-bold uppercase text-xs text-white">Prenda de Vestir (Tallas)</div>
+                      <div className="text-[11px] text-neutral-300 mt-0.5">
+                        Para hoodies, franelas, pantalones y chaquetas (S, M, L, XL).
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setProdSizingType('accessory_dimensions')}
+                      className={`p-3 rounded border text-left cursor-pointer transition-all ${
+                        prodSizingType === 'accessory_dimensions'
+                          ? 'border-[#4ade80] bg-[#003314] text-white'
+                          : 'border-neutral-800 bg-neutral-950 text-neutral-400'
+                      }`}
+                    >
+                      <div className="font-bold uppercase text-xs text-white">Accesorio / Bolso (Puffer Bags)</div>
+                      <div className="text-[11px] text-neutral-300 mt-0.5">
+                        Para bolsos, carteras y accesorios con medidas específicas en cm.
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* If Clothing: Choose Sizes */}
+                  {prodSizingType === 'clothing' ? (
+                    <div className="pt-2">
+                      <label className="block text-[11px] uppercase text-neutral-400 mb-2">
+                        Tallas Habilitadas:
+                      </label>
+                      <div className="flex gap-2">
+                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((sz) => {
+                          const isSel = prodSelectedSizes.includes(sz);
+                          return (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => toggleSizeSelection(sz)}
+                              className={`px-3 py-1.5 text-xs font-bold rounded border cursor-pointer ${
+                                isSel
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-neutral-950 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                              }`}
+                            >
+                              {sz}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* If Accessory: Width and Length in cm */
+                    <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] uppercase text-neutral-400 mb-1 font-bold">
+                          Ancho en centímetros (cm) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="1"
+                          placeholder="Ej. 38"
+                          value={prodWidthCm}
+                          onChange={(e) => setProdWidthCm(e.target.value)}
+                          className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                          required={prodSizingType === 'accessory_dimensions'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase text-neutral-400 mb-1 font-bold">
+                          Largo en centímetros (cm) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="1"
+                          placeholder="Ej. 30"
+                          value={prodLengthCm}
+                          onChange={(e) => setProdLengthCm(e.target.value)}
+                          className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                          required={prodSizingType === 'accessory_dimensions'}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Manual Product Specifications (tela, compartimentos, etc.) */}
+                <div>
+                  <label className="block uppercase text-neutral-400 mb-1 font-bold">
+                    Especificaciones del Producto (1 por línea)
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="Ejemplo:&#10;Tela: French Terry pesado 460 GSM&#10;Compartimento interno acolchado&#10;Cremallera impermeable YKK&#10;Bordado frontal en relieve MOXIE"
+                    value={prodSpecs}
+                    onChange={(e) => setProdSpecs(e.target.value)}
+                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white font-mono text-xs"
+                  />
+                  <span className="text-[10px] text-neutral-500 mt-0.5 block">
+                    Ingresa manualmente los detalles técnicos que desees mostrar a los clientes.
+                  </span>
+                </div>
+
+                {/* Photo Upload Section */}
+                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="uppercase text-neutral-300 font-bold">
+                      Fotografías del Producto
+                    </label>
+                    <span className="text-[10px] text-neutral-500">
+                      {prodImagesList.length} fotos cargadas
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3 bg-neutral-950 rounded border border-dashed border-neutral-700 text-center">
+                      <Upload className="w-4 h-4 mx-auto text-neutral-500 mb-1" />
+                      <span className="text-[11px] text-neutral-400 block mb-2">
+                        Subir foto desde tu dispositivo
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLocalImageUpload}
+                        className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-white file:text-black cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="p-3 bg-neutral-950 rounded border border-neutral-800">
+                      <span className="text-[11px] text-neutral-400 block mb-1">
+                        O introduce la URL directa de la foto:
+                      </span>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={prodImageInput}
+                          onChange={(e) => setProdImageInput(e.target.value)}
+                          className="flex-1 px-2.5 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddImageUrl}
+                          className="px-3 py-1 text-xs font-bold uppercase bg-[#003314] text-[#4ade80] border border-[#005220] rounded hover:bg-[#005220] cursor-pointer"
+                        >
+                          + Añadir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {prodImagesList.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pt-2">
+                      {prodImagesList.map((img, i) => (
+                        <div key={i} className="relative w-16 h-16 rounded overflow-hidden border border-neutral-700 shrink-0">
+                          <img src={img} alt="Vista previa" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setProdImagesList((prev) => prev.filter((_, idx) => idx !== i))
+                            }
+                            className="absolute top-0.5 right-0.5 bg-black/80 text-white rounded p-0.5 hover:text-red-400"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={prodInStock}
+                      onChange={(e) => setProdInStock(e.target.checked)}
+                      className="accent-[#003314]"
+                    />
+                    <span className="text-white uppercase font-bold">Estado: En Stock (Disponible)</span>
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('inventory')}
+                      className="px-4 py-2 text-xs font-bold uppercase text-neutral-400 hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider bg-white text-black hover:bg-neutral-200 active:scale-98 rounded transition-all cursor-pointer shadow-md"
+                    >
+                      {editingProductId ? 'Guardar Cambios de la Prenda' : '+ Publicar Prenda en MOXIE'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {/* TAB 3: Delivery Zones Configuration */}
+            {activeTab === 'delivery-zones' && (
+              <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#4ade80]" />
+                    <h4 className="font-bold uppercase text-white">
+                      Configuración de Zonas de Delivery en Valencia
+                    </h4>
+                  </div>
+                  <span className="text-neutral-500 text-[11px]">
+                    {deliveryZones.length} zonas activas
+                  </span>
+                </div>
+
+                <p className="text-neutral-400 text-[11px] leading-relaxed">
+                  Configura libremente las zonas de Valencia y el costo aproximado en USD ($) para cada área. Los clientes verán estos montos al momento de hacer el pedido.
+                </p>
+
+                {/* Form to add a new delivery zone */}
+                <form onSubmit={handleAddDeliveryZone} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
+                  <span className="font-bold text-white uppercase block text-[11px]">
+                    + Agregar Nueva Zona de Delivery
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-neutral-400 mb-1 text-[10px] uppercase font-bold">
+                        Nombre de la Zona / Sectores
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Valencia Sur (Plaza de Toros, Santa Inés, Bella Florida)"
+                        value={newZoneName}
+                        onChange={(e) => setNewZoneName(e.target.value)}
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-neutral-400 mb-1 text-[10px] uppercase font-bold">
+                        Costo USD ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={newZoneCostUSD}
+                        onChange={(e) => setNewZoneCostUSD(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        required
+                      />
+                      <span className="text-[10px] text-[#4ade80] mt-0.5 block">
+                        ≈ {formatBs(newZoneCostUSD)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200 cursor-pointer"
+                    >
+                      + Guardar Zona
+                    </button>
+                  </div>
+                </form>
+
+                {/* List of existing zones with editable costs */}
+                <div className="space-y-2">
+                  <span className="font-bold text-white uppercase text-[11px] block">
+                    Zonas Configuradas Actualmente:
+                  </span>
+
+                  <div className="divide-y divide-neutral-900 border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900/40">
+                    {deliveryZones.map((z) => {
+                      const isEditing = editingZoneId === z.id;
+                      return (
+                        <div key={z.id} className="p-3.5 flex items-center justify-between gap-4 hover:bg-neutral-900 transition-colors">
+                          <div className="flex-1">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={tempZoneName}
+                                onChange={(e) => setTempZoneName(e.target.value)}
+                                className="w-full px-2 py-1 bg-neutral-950 border border-[#005220] rounded text-white text-xs"
+                              />
+                            ) : (
+                              <div className="font-bold text-white text-xs">{z.name}</div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isEditing ? (
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={tempZoneCost}
+                                  onChange={(e) => setTempZoneCost(Number(e.target.value))}
+                                  className="w-16 px-1.5 py-1 bg-neutral-950 border border-[#005220] rounded text-white text-xs tabular-nums"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveDeliveryZone(z.id)}
+                                  className="p-1 bg-[#003314] text-[#4ade80] rounded hover:bg-[#005220]"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-right">
+                                <span className="font-bold text-[#4ade80] text-xs tabular-nums">
+                                  {formatUSD(z.costUSD)}
+                                </span>
+                                <span className="text-[10px] text-neutral-500 block tabular-nums">
+                                  ≈ {formatBs(z.costUSD)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {!isEditing ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingZoneId(z.id);
+                                  setTempZoneName(z.name);
+                                  setTempZoneCost(z.costUSD);
+                                }}
+                                className="p-1 text-neutral-400 hover:text-white"
+                                title="Editar nombre o costo"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingZoneId(null)}
+                                className="p-1 text-neutral-500 hover:text-white text-[10px]"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => deleteDeliveryZone(z.id)}
+                              className="p-1 text-neutral-500 hover:text-red-400"
+                              title="Eliminar zona"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Finances (Ingresos y Gastos) */}
             {activeTab === 'finances' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
                 {/* Financial KPI Cards */}
@@ -520,9 +1176,6 @@ export const AdminModal: React.FC = () => {
                         ≈ {formatBs(totalIncomeUSD)}
                       </span>
                     </div>
-                    <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded border border-emerald-800">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
                   </div>
 
                   <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 flex items-start justify-between">
@@ -535,14 +1188,11 @@ export const AdminModal: React.FC = () => {
                         ≈ {formatBs(totalExpensesUSD)}
                       </span>
                     </div>
-                    <div className="p-2 bg-red-950/60 text-red-400 rounded border border-red-800">
-                      <ArrowDownRight className="w-4 h-4" />
-                    </div>
                   </div>
 
                   <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] text-neutral-400 uppercase block">Balance Neto</span>
+                      <span className="text-[10px] text-neutral-400 uppercase block">Balance Neto (Ganancia)</span>
                       <span
                         className={`text-2xl font-bold tabular-nums ${
                           netProfitUSD >= 0 ? 'text-[#4ade80]' : 'text-red-400'
@@ -554,145 +1204,101 @@ export const AdminModal: React.FC = () => {
                         ≈ {formatBs(netProfitUSD)}
                       </span>
                     </div>
-                    <div className="p-2 bg-[#003314] text-[#4ade80] rounded border border-[#005220]">
-                      <DollarSign className="w-4 h-4" />
-                    </div>
                   </div>
                 </div>
 
-                {/* New Transaction Form */}
-                <form onSubmit={handleAddFinance} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
-                  <h4 className="font-bold uppercase text-white text-xs flex items-center gap-2">
-                    <Plus className="w-3.5 h-3.5 text-[#4ade80]" />
-                    <span>Registrar Nuevo Movimiento (Ingreso o Gasto)</span>
-                  </h4>
+                {/* New Financial Record Form */}
+                <form
+                  onSubmit={handleAddFinance}
+                  className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3"
+                >
+                  <span className="font-bold text-white uppercase block text-xs">
+                    + Registrar Nuevo Movimiento (Ingreso / Gasto)
+                  </span>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
+                      <label className="block text-neutral-400 mb-1 text-[10px] uppercase font-bold">
                         Tipo de Movimiento
                       </label>
                       <select
                         value={finType}
                         onChange={(e) => setFinType(e.target.value as 'ingreso' | 'gasto')}
-                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
                       >
-                        <option value="ingreso">🟢 Ingreso (Venta, Abono)</option>
-                        <option value="gasto">🔴 Gasto (Tela, Confección, Empaque)</option>
+                        <option value="ingreso">Ingreso (+)</option>
+                        <option value="gasto">Gasto (-)</option>
                       </select>
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
-                        Descripción / Concepto *
+                      <label className="block text-neutral-400 mb-1 text-[10px] uppercase font-bold">
+                        Concepto o Descripción
                       </label>
                       <input
                         type="text"
-                        placeholder="Ej. Compra de tela French Terry 460 GSM o Venta Drop 01"
+                        placeholder="Ej. Venta 2x Hoodie / Tela French Terry / Envíos"
                         value={finDesc}
                         onChange={(e) => setFinDesc(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase text-neutral-400 mb-1">
-                        Monto en USD ($) *
+                      <label className="block text-neutral-400 mb-1 text-[10px] uppercase font-bold">
+                        Monto en USD ($)
                       </label>
                       <input
                         type="number"
-                        step="0.5"
                         min="0.5"
+                        step="0.5"
                         value={finAmount}
                         onChange={(e) => setFinAmount(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-neutral-400 uppercase">Categoría:</span>
-                      <select
-                        value={finCategory}
-                        onChange={(e) => setFinCategory(e.target.value)}
-                        className="px-2 py-1 bg-neutral-950 border border-neutral-700 rounded text-white text-[11px]"
-                      >
-                        <option value="Ventas de Ropa">Ventas de Ropa</option>
-                        <option value="Materia Prima">Materia Prima (Telas / Hilos)</option>
-                        <option value="Confección & Taller">Confección & Taller</option>
-                        <option value="Empaque & Branding">Empaque & Branding</option>
-                        <option value="Marketing & Redes">Marketing & Redes</option>
-                        <option value="Logística & Delivery">Logística & Delivery</option>
-                        <option value="Otros Gastos">Otros Gastos</option>
-                      </select>
-                    </div>
-
+                  <div className="text-right">
                     <button
                       type="submit"
                       className="px-4 py-2 bg-white text-black font-bold uppercase rounded hover:bg-neutral-200 cursor-pointer"
                     >
-                      + Guardar Movimiento
+                      Guardar Movimiento
                     </button>
                   </div>
                 </form>
 
-                {/* Financial History Table */}
+                {/* Financial History List */}
                 <div className="space-y-2">
-                  <h4 className="font-bold uppercase text-neutral-300 text-xs">
-                    Historial de Movimientos ({financialRecords.length})
-                  </h4>
+                  <span className="font-bold text-white uppercase text-xs block">
+                    Historial de Movimientos ({financialRecords.length}):
+                  </span>
 
                   {financialRecords.length === 0 ? (
-                    <p className="text-center py-6 text-neutral-500">
-                      Aún no hay movimientos registrados.
-                    </p>
+                    <p className="text-neutral-500 py-4 text-center">No hay registros financieros aún.</p>
                   ) : (
                     <div className="divide-y divide-neutral-900 border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900/40">
                       {financialRecords.map((r) => (
-                        <div
-                          key={r.id}
-                          className="p-3 flex items-center justify-between hover:bg-neutral-900 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
+                        <div key={r.id} className="p-3 flex items-center justify-between hover:bg-neutral-900">
+                          <div>
+                            <span className="text-white font-bold block">{r.description}</span>
+                            <span className="text-[10px] text-neutral-500">{r.date} · {r.category}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
                             <span
-                              className={`p-1.5 rounded text-[10px] font-bold uppercase ${
-                                r.type === 'ingreso'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : 'bg-red-950 text-red-400 border border-red-800'
+                              className={`font-bold tabular-nums text-sm ${
+                                r.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
                               }`}
                             >
-                              {r.type === 'ingreso' ? '+ INGRESO' : '- GASTO'}
+                              {r.type === 'ingreso' ? '+' : '-'}${r.amountUSD.toFixed(2)}
                             </span>
-                            <div>
-                              <p className="font-bold text-white text-xs">{r.description}</p>
-                              <span className="text-[10px] text-neutral-400">
-                                {r.category} · {r.date}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <span
-                                className={`font-bold tabular-nums text-sm block ${
-                                  r.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
-                                }`}
-                              >
-                                {r.type === 'ingreso' ? '+' : '-'}${r.amountUSD.toFixed(2)}
-                              </span>
-                              <span className="text-[10px] text-neutral-500 tabular-nums">
-                                ≈ {formatBs(r.amountUSD)}
-                              </span>
-                            </div>
-
                             <button
                               type="button"
                               onClick={() => deleteFinancialRecord(r.id)}
-                              className="text-neutral-500 hover:text-red-400 p-1"
-                              title="Eliminar movimiento"
+                              className="text-neutral-500 hover:text-red-400"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -705,7 +1311,7 @@ export const AdminModal: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 3: Exchange Rate & Main Banner Photo */}
+            {/* TAB 5: Exchange Rate & Main Banner Photo */}
             {activeTab === 'rates-banner' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
                 <form onSubmit={handleSaveRateAndBanner} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
@@ -749,258 +1355,33 @@ export const AdminModal: React.FC = () => {
                         value={tempWhatsApp}
                         onChange={(e) => setTempWhatsApp(e.target.value)}
                         className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white"
-                        placeholder="584121234567"
+                        placeholder="584244578410"
                         required
                       />
                     </div>
                   </div>
 
-                  {/* Main Banner / Photo Changer */}
-                  <div className="pt-4 border-t border-neutral-800 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-[#4ade80]" />
-                      <h4 className="font-bold uppercase text-white">
-                        Foto Principal de Portada / Banner (Hero)
-                      </h4>
-                    </div>
-
-                    <p className="text-[11px] text-neutral-400">
-                      Sube la fotografía principal que represente a MOXIE o introduce la URL directa:
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                      <div className="p-3 bg-neutral-950 rounded border border-dashed border-neutral-700 text-center">
-                        <Upload className="w-4 h-4 mx-auto text-neutral-400 mb-1" />
-                        <span className="text-[11px] text-neutral-400 block mb-1">
-                          Subir foto desde tu dispositivo
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleBannerUpload}
-                          className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-white file:text-black cursor-pointer"
-                        />
-                      </div>
-
-                      <div className="p-3 bg-neutral-950 rounded border border-neutral-800">
-                        <span className="text-[11px] text-neutral-400 block mb-1">
-                          O escribe la URL de la imagen:
-                        </span>
-                        <input
-                          type="url"
-                          placeholder="https://..."
-                          value={tempBannerUrl}
-                          onChange={(e) => setTempBannerUrl(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs bg-neutral-900 border border-neutral-700 rounded text-white"
-                        />
-                      </div>
-                    </div>
-
-                    {tempBannerUrl && (
-                      <div className="pt-2">
-                        <span className="text-[10px] text-neutral-500 uppercase block mb-1">
-                          Vista previa del banner actual:
-                        </span>
-                        <img
-                          src={tempBannerUrl}
-                          alt="Banner actual"
-                          className="w-full max-h-36 object-cover rounded border border-neutral-800"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-3 flex justify-end">
+                  <div className="text-right pt-3 border-t border-neutral-800">
                     <button
                       type="submit"
-                      className="px-5 py-2 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded transition-colors cursor-pointer"
+                      className="px-5 py-2 text-xs font-bold uppercase bg-white text-black hover:bg-neutral-200 rounded cursor-pointer"
                     >
-                      <Save className="w-3.5 h-3.5 inline mr-1.5" />
-                      <span>Guardar Cambios</span>
+                      Guardar Ajustes
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* TAB 4: Add New Product */}
-            {activeTab === 'add-product' && (
-              <form onSubmit={handleCreateProduct} className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-4 font-mono text-xs">
-                <div>
-                  <label className="block uppercase text-neutral-400 mb-1 font-bold">
-                    Nombre de la Prenda o Accesorio *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. MOXIE Heavyweight Boxy Hoodie"
-                    value={newProdName}
-                    onChange={(e) => setNewProdName(e.target.value)}
-                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
-                      Categoría
-                    </label>
-                    <select
-                      value={newProdCategory}
-                      onChange={(e) => setNewProdCategory(e.target.value)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                    >
-                      {categories.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
-                      Precio en USD ($) *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.5"
-                      value={newProdPriceUSD}
-                      onChange={(e) => setNewProdPriceUSD(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                      required
-                    />
-                    <span className="text-[10px] text-[#4ade80] mt-0.5 block">
-                      ≈ {formatBs(newProdPriceUSD)}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block uppercase text-neutral-400 mb-1 font-bold">
-                      Unidades Iniciales en Inventario
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={newProdStockUnits}
-                      onChange={(e) => setNewProdStockUnits(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Photo Upload Section */}
-                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="uppercase text-neutral-300 font-bold">
-                      Fotografías Oficiales de la Prenda
-                    </label>
-                    <span className="text-[10px] text-neutral-500">
-                      {newProdImagesList.length} fotos cargadas
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-3 bg-neutral-950 rounded border border-dashed border-neutral-700 text-center">
-                      <Upload className="w-4 h-4 mx-auto text-neutral-500 mb-1" />
-                      <span className="text-[11px] text-neutral-400 block mb-2">
-                        Subir foto desde tu dispositivo
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLocalImageUpload}
-                        className="text-[10px] text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-white file:text-black cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="p-3 bg-neutral-950 rounded border border-neutral-800">
-                      <span className="text-[11px] text-neutral-400 block mb-1">
-                        O pega la URL directa de la foto:
-                      </span>
-                      <div className="flex gap-2">
-                        <input
-                          type="url"
-                          placeholder="https://..."
-                          value={newProdImageInput}
-                          onChange={(e) => setNewProdImageInput(e.target.value)}
-                          className="flex-1 px-2.5 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddImageUrl}
-                          className="px-3 py-1 text-xs font-bold uppercase bg-[#003314] text-[#4ade80] border border-[#005220] rounded hover:bg-[#005220] cursor-pointer"
-                        >
-                          + Añadir
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {newProdImagesList.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pt-2">
-                      {newProdImagesList.map((img, i) => (
-                        <div key={i} className="relative w-16 h-16 rounded overflow-hidden border border-neutral-700 shrink-0">
-                          <img src={img} alt="Vista previa" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setNewProdImagesList((prev) => prev.filter((_, idx) => idx !== i))
-                            }
-                            className="absolute top-0.5 right-0.5 bg-black/80 text-white rounded p-0.5 hover:text-red-400"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block uppercase text-neutral-400 mb-1">
-                    Descripción de la Prenda
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Detalles del fit, corte y silueta..."
-                    value={newProdDesc}
-                    onChange={(e) => setNewProdDesc(e.target.value)}
-                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newProdInStock}
-                      onChange={(e) => setNewProdInStock(e.target.checked)}
-                      className="accent-[#003314]"
-                    />
-                    <span className="text-white uppercase font-bold">Publicar inmediatamente En Stock</span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-white text-black hover:bg-neutral-200 rounded transition-colors cursor-pointer"
-                  >
-                    + Publicar Prenda en MOXIE
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* TAB 5: Orders Log */}
+            {/* TAB 6: Orders Log */}
             {activeTab === 'orders' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-4 font-mono text-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
                   <h4 className="font-bold uppercase text-white">
-                    Historial de Pedidos Generados ({orders.length})
+                    Historial de Pedidos ({orders.length})
                   </h4>
                   <span className="text-neutral-500 text-[11px]">
-                    Registrados automáticamente al enviar pedido por WhatsApp
+                    Registrados al despachar pedido por WhatsApp
                   </span>
                 </div>
 
@@ -1018,7 +1399,7 @@ export const AdminModal: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-neutral-300">
-                        Cliente: <strong>{o.customer.name}</strong> ({o.customer.phone})
+                        Cliente: <strong>{o.customer.name}</strong> ({o.customer.phone}) · Pago: {o.paymentMethod === 'divisas_cash' ? 'Divisas (Efectivo/Promo)' : 'Bolívares (Tasa BCV)'}
                       </p>
                       <p className="text-neutral-400 text-[11px]">
                         Método: {o.delivery.type.toUpperCase()} ·{' '}

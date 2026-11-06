@@ -1,47 +1,19 @@
-import React, { useRef, useState } from 'react';
-import { ArrowRight, Volume2, VolumeX, Play, Pause, MapPin, Truck, ShieldCheck } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, MapPin, Truck, ShieldCheck } from 'lucide-react';
 
 export const Hero: React.FC = () => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(true);
-
   const videoSrc = '/assets/aistudio/IMG_2987_489d99f7.MOV';
-
-  const toggleSound = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => setIsPlaying(true))
-            .catch(() => setIsPlaying(false));
-        }
-      }
-    }
-  };
 
   return (
     <>
-      {/* 1. Full-Screen Extended Video Hero Section */}
+      {/* 1. Full-Screen Extended Clean Video Hero Section */}
       <section className="relative w-full h-[calc(100vh-5rem)] min-h-[580px] max-h-[920px] flex items-center justify-center overflow-hidden bg-black select-none">
-        {/* Extended Background Video covering full width and height */}
+        {/* Extended Background Video in continuous clean silent loop */}
         <video
-          ref={videoRef}
           src={videoSrc}
           autoPlay
           loop
-          muted={isMuted}
+          muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
         />
@@ -74,27 +46,6 @@ export const Hero: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </a>
           </div>
-        </div>
-
-        {/* Minimal Disconnected Video Audio & Play Controls in Bottom Corner */}
-        <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 z-20 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pausar video' : 'Reproducir video'}
-            className="p-2.5 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white border border-white/10 hover:border-white/30 transition-all cursor-pointer shadow-lg"
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={isMuted ? 'Activar audio' : 'Silenciar audio'}
-            className="p-2.5 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white border border-white/10 hover:border-white/30 transition-all cursor-pointer shadow-lg"
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-neutral-400" /> : <Volume2 className="w-4 h-4 text-[#4ade80]" />}
-          </button>
         </div>
       </section>
 
