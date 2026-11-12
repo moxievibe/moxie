@@ -7,7 +7,10 @@ export const INITIAL_SETTINGS: StoreSettings = {
   whatsappNumber: '584244578410',
   instagramUrl: 'https://instagram.com/moxievibe',
   tiktokUrl: 'https://tiktok.com/@moxievibee',
-  exchangeRateBs: 58.50, // 1 USD = 58.50 Bs (configurable en panel)
+  exchangeRateBs: 904.45, // Tasa Oficial BCV diaria (bcv.org.ve)
+  bcvAutoSync: true,
+  bcvLastUpdated: new Date().toISOString(),
+  bcvSource: 'Banco Central de Venezuela (bcv.org.ve)',
   categories: ['Ropa', 'Accesorios'],
   deliveryZones: [
     { id: 'zone-1', name: 'Valencia Norte (Prebo, La Viña, El Parral, Las Chimeneas)', costUSD: 3 },
@@ -85,6 +88,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     inStock: true,
     featured: true,
     badge: 'DROP 01',
+    promoCashUSD: 42,
+    colors: ['Verde Moxie', 'Negro Ébano'],
     variants: [
       {
         name: 'Talla',
@@ -92,15 +97,26 @@ export const INITIAL_PRODUCTS: Product[] = [
       },
       {
         name: 'Color',
-        options: ['Verde Moxie (#003314)', 'Negro Ébano'],
+        options: ['Verde Moxie', 'Negro Ébano'],
       },
     ],
+    variantStock: {
+      'verde moxie__s': true,
+      'verde moxie__m': true,
+      'verde moxie__l': false,
+      'verde moxie__xl': true,
+      'negro ébano__s': false,
+      'negro ébano__m': true,
+      'negro ébano__l': true,
+      'negro ébano__xl': true,
+    },
   },
   {
     id: 'moxie-tee-01',
     name: 'MOXIE Oversized Heavy Cotton Tee',
     category: 'Ropa',
     priceUSD: 28,
+    promoCashUSD: 25,
     originalPriceUSD: 32,
     stockUnits: 35,
     images: [
@@ -124,6 +140,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     inStock: true,
     featured: true,
     badge: 'MÁS VENDIDO',
+    colors: ['Negro Intenso', 'Blanco Óptico', 'Verde Moxie'],
     variants: [
       {
         name: 'Talla',
@@ -134,6 +151,20 @@ export const INITIAL_PRODUCTS: Product[] = [
         options: ['Negro Intenso', 'Blanco Óptico', 'Verde Moxie'],
       },
     ],
+    variantStock: {
+      'negro intenso__s': true,
+      'negro intenso__m': true,
+      'negro intenso__l': true,
+      'negro intenso__xl': false,
+      'blanco óptico__s': false,
+      'blanco óptico__m': true,
+      'blanco óptico__l': true,
+      'blanco óptico__xl': true,
+      'verde moxie__s': true,
+      'verde moxie__m': true,
+      'verde moxie__l': false,
+      'verde moxie__xl': false,
+    },
   },
   {
     id: 'moxie-track-jacket-01',

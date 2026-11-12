@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Shield,
@@ -18,9 +18,11 @@ import {
   Pencil,
   Tag,
   Ruler,
+  RefreshCw,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Product } from '../types';
+import { getVariantStockKey } from '../utils/variantHelpers';
 
 export const AdminModal: React.FC = () => {
   const {
@@ -58,6 +60,7 @@ export const AdminModal: React.FC = () => {
     formatUSD,
     formatBs,
     exchangeRateBs,
+    syncBcvRate,
   } = useStore();
 
   const [passwordInput, setPasswordInput] = useState('');
@@ -91,11 +94,15 @@ export const AdminModal: React.FC = () => {
   const [prodColors, setProdColors] = useState<string>('Negro, Blanco, Verde Moxie');
   const [prodSizingType, setProdSizingType] = useState<'clothing' | 'accessory_dimensions'>('clothing');
   const [prodSelectedSizes, setProdSelectedSizes] = useState<string[]>(['S', 'M', 'L', 'XL']);
+  const [prodVariantStock, setProdVariantStock] = useState<Record<string, boolean>>({});
   const [prodWidthCm, setProdWidthCm] = useState<string>('');
   const [prodLengthCm, setProdLengthCm] = useState<string>('');
   const [prodSpecs, setProdSpecs] = useState<string>('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
   const [prodImagesList, setProdImagesList] = useState<string[]>([]);
   const [prodImageInput, setProdImageInput] = useState('');
+
+  // Rate and BCV sync state
+  const [isSyncingBcv, setIsSyncingBcv] = useState(false);
 
   // New finance record form
   const [finType, setFinType] = useState<'ingreso' | 'gasto'>('ingreso');
@@ -150,6 +157,9 @@ export const AdminModal: React.FC = () => {
     setProdWidthCm(p.widthCm ? String(p.widthCm) : '');
     setProdLengthCm(p.lengthCm ? String(p.lengthCm) : '');
 
+    // Variant stock map
+    setProdVariantStock(p.variantStock || {});
+
     // Sizes
     const tallaVar = p.variants?.find((v) => v.name.toLowerCase() === 'talla');
     setProdSelectedSizes(tallaVar ? tallaVar.options : ['S', 'M', 'L', 'XL']);
@@ -176,6 +186,7 @@ export const AdminModal: React.FC = () => {
     setProdColors('Negro, Blanco, Verde Moxie');
     setProdSizingType('clothing');
     setProdSelectedSizes(['S', 'M', 'L', 'XL']);
+    setProdVariantStock({});
     setProdWidthCm('');
     setProdLengthCm('');
     setProdSpecs('100% Algodón Peinado 260 GSM\nCorte Boxy Streetwear\nCosturas reforzadas');
@@ -183,6 +194,42 @@ export const AdminModal: React.FC = () => {
     setProdImageInput('');
     setActiveTab('product-form');
   };
+
+  const colorsArray = useMemo(() => {
+    return prodColors
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }, [prodColors]);
+
+  const currentCombinations = useMemo(() => {
+    const list: { key: string; label: string; sub: string }[] = [];
+    const colors = colorsArray.length > 0 ? colorsArray : ['Color Único'];
+
+    if (prodSizingType === 'clothing') {
+      const sizes = prodSelectedSizes.length > 0 ? prodSelectedSizes : ['Estándar'];
+      for (const col of colors) {
+        for (const sz of sizes) {
+          const key = getVariantStockKey(col === 'Color Único' ? '' : col, sz === 'Estándar' ? '' : sz);
+          list.push({
+            key,
+            label: `${col} · Talla ${sz}`,
+            sub: `Talla: ${sz}`,
+          });
+        }
+      }
+    } else {
+      for (const col of colors) {
+        const key = getVariantStockKey(col === 'Color Único' ? '' : col, '');
+        list.push({
+          key,
+          label: col,
+          sub: prodWidthCm && prodLengthCm ? `${prodWidthCm}x${prodLengthCm} cm` : 'Accesorio',
+        });
+      }
+    }
+    return list;
+  }, [colorsArray, prodSelectedSizes, prodSizingType, prodWidthCm, prodLengthCm]);
 
   // Save Product (Create or Edit)
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -192,11 +239,6 @@ export const AdminModal: React.FC = () => {
     const specsArray = prodSpecs
       .split('\n')
       .map((s) => s.trim())
-      .filter(Boolean);
-
-    const colorsArray = prodColors
-      .split(',')
-      .map((c) => c.trim())
       .filter(Boolean);
 
     const promoCashNum = prodPromoCashUSD.trim() ? Number(prodPromoCashUSD) : undefined;
@@ -217,6 +259,14 @@ export const AdminModal: React.FC = () => {
       variantsList.push({ name: 'Color', options: colorsArray });
     }
 
+    // Compute variant stock map
+    const finalVariantStock: Record<string, boolean> = {};
+    currentCombinations.forEach((combo) => {
+      finalVariantStock[combo.key] = prodVariantStock[combo.key] !== false;
+    });
+
+    const hasAnyInStock = Object.values(finalVariantStock).some((v) => v === true);
+
     if (editingProductId) {
       // Update existing product
       updateProduct(editingProductId, {
@@ -225,7 +275,7 @@ export const AdminModal: React.FC = () => {
         priceUSD: Number(prodPriceUSD) || 1,
         promoCashUSD: promoCashNum,
         stockUnits: Number(prodStockUnits) || 0,
-        inStock: prodInStock,
+        inStock: hasAnyInStock,
         images: imagesToUse,
         technicalSpecs: specsArray,
         colors: colorsArray,
@@ -233,6 +283,7 @@ export const AdminModal: React.FC = () => {
         widthCm: widthNum,
         lengthCm: lengthNum,
         variants: variantsList,
+        variantStock: finalVariantStock,
       });
     } else {
       // Add new product
@@ -242,7 +293,7 @@ export const AdminModal: React.FC = () => {
         priceUSD: Number(prodPriceUSD) || 1,
         promoCashUSD: promoCashNum,
         stockUnits: Number(prodStockUnits) || 0,
-        inStock: prodInStock,
+        inStock: hasAnyInStock,
         images: imagesToUse,
         technicalSpecs: specsArray,
         colors: colorsArray,
@@ -250,6 +301,7 @@ export const AdminModal: React.FC = () => {
         widthCm: widthNum,
         lengthCm: lengthNum,
         variants: variantsList,
+        variantStock: finalVariantStock,
       });
     }
 
@@ -285,10 +337,28 @@ export const AdminModal: React.FC = () => {
     setFinAmount(50);
   };
 
+  useEffect(() => {
+    setTempRate(exchangeRateBs);
+  }, [exchangeRateBs]);
+
+  const handleSyncBcv = async () => {
+    setIsSyncingBcv(true);
+    try {
+      const res = await syncBcvRate();
+      if (res && res.success && res.rate) {
+        setTempRate(res.rate);
+      }
+    } catch (err) {
+      console.error('Error syncing BCV rate:', err);
+    } finally {
+      setIsSyncingBcv(false);
+    }
+  };
+
   const handleSaveRateAndBanner = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({
-      exchangeRateBs: Number(tempRate) || 58.5,
+      exchangeRateBs: Number(tempRate) || 904.45,
       heroBannerImage: tempBannerUrl.trim(),
       whatsappNumber: tempWhatsApp.trim(),
     });
@@ -540,6 +610,14 @@ export const AdminModal: React.FC = () => {
                             <span className="text-[11px] text-neutral-400 block">
                               {p.category} {p.promoCashUSD ? `· Promo: $${p.promoCashUSD}` : ''}
                             </span>
+                            {p.variantStock && Object.keys(p.variantStock).length > 0 && (
+                              <span className="text-[10px] block mt-0.5">
+                                Variantes:{' '}
+                                <span className={Object.values(p.variantStock).some(Boolean) ? 'text-[#4ade80]' : 'text-red-400'}>
+                                  {Object.values(p.variantStock).filter(Boolean).length}/{Object.keys(p.variantStock).length} disponibles
+                                </span>
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -876,6 +954,90 @@ export const AdminModal: React.FC = () => {
                           required={prodSizingType === 'accessory_dimensions'}
                         />
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Variant Stock Availability Matrix */}
+                <div className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-neutral-800">
+                    <div>
+                      <label className="block uppercase text-white font-bold text-xs">
+                        Disponibilidad por Grupo (Tallas y Colores) *
+                      </label>
+                      <span className="text-[10px] text-neutral-400">
+                        Configura con exactitud qué combinaciones están disponibles y cuáles están agotadas. La prenda se mantendrá activa mientras tenga al menos una variante con stock.
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allAvailable: Record<string, boolean> = {};
+                          currentCombinations.forEach((c) => {
+                            allAvailable[c.key] = true;
+                          });
+                          setProdVariantStock(allAvailable);
+                        }}
+                        className="px-2.5 py-1 bg-[#003314] text-[#4ade80] border border-[#005220] rounded text-[10px] uppercase font-bold hover:bg-[#005220] cursor-pointer"
+                      >
+                        ✓ Todas Disponibles
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allOut: Record<string, boolean> = {};
+                          currentCombinations.forEach((c) => {
+                            allOut[c.key] = false;
+                          });
+                          setProdVariantStock(allOut);
+                        }}
+                        className="px-2.5 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded text-[10px] uppercase font-bold hover:bg-neutral-700 cursor-pointer"
+                      >
+                        ✕ Todas Agotadas
+                      </button>
+                    </div>
+                  </div>
+
+                  {currentCombinations.length === 0 ? (
+                    <p className="text-[11px] text-neutral-500 py-2">
+                      Ingresa al menos un color o talla arriba para configurar el stock por variantes.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1">
+                      {currentCombinations.map((combo) => {
+                        const isAvail = prodVariantStock[combo.key] !== false;
+                        return (
+                          <div
+                            key={combo.key}
+                            onClick={() => {
+                              setProdVariantStock((prev) => ({
+                                ...prev,
+                                [combo.key]: !isAvail,
+                              }));
+                            }}
+                            className={`p-2.5 rounded border transition-all cursor-pointer flex items-center justify-between select-none ${
+                              isAvail
+                                ? 'bg-[#003314]/40 border-[#005220] text-white hover:border-[#4ade80]'
+                                : 'bg-neutral-950/70 border-neutral-800 text-neutral-500 line-through hover:border-neutral-700'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <span className="text-xs font-bold block truncate">{combo.label}</span>
+                              <span className="text-[10px] text-neutral-400 no-underline block">{combo.sub}</span>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 no-underline ${
+                                isAvail
+                                  ? 'bg-[#003314] text-[#4ade80] border border-[#005220]'
+                                  : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                              }`}
+                            >
+                              {isAvail ? 'EN STOCK' : 'AGOTADO'}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1314,6 +1476,43 @@ export const AdminModal: React.FC = () => {
             {/* TAB 5: Exchange Rate & Main Banner Photo */}
             {activeTab === 'rates-banner' && (
               <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6 font-mono text-xs">
+                {/* Official BCV Live Auto-Sync Card */}
+                <div className="p-4 bg-neutral-900 rounded-lg border border-[#005220]/60 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#4ade80] animate-pulse mt-1 shrink-0 shadow-[0_0_8px_#4ade80]" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold uppercase text-white text-xs">
+                            Sincronización Automática BCV (bcv.org.ve)
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#003314] text-[#4ade80] border border-[#005220]">
+                            EN VIVO
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 mt-0.5">
+                          El sistema consulta diariamente la tasa oficial del Banco Central de Venezuela (BCV) para recalcular los precios en bolívares de manera automática en toda la tienda.
+                        </p>
+                        {settings.bcvLastUpdated && (
+                          <span className="text-[10px] text-neutral-500 block mt-1">
+                            Última sincronización: {settings.bcvLastUpdated} {settings.bcvSource ? `· Fuente: ${settings.bcvSource}` : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSyncBcv}
+                      disabled={isSyncingBcv}
+                      className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-[#003314] hover:bg-[#005220] active:scale-98 text-[#4ade80] border border-[#005220] rounded font-bold uppercase text-[11px] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingBcv ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingBcv ? 'Consultando BCV...' : 'Sincronizar BCV Ahora'}</span>
+                    </button>
+                  </div>
+                </div>
+
                 <form onSubmit={handleSaveRateAndBanner} className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
                     <div className="flex items-center gap-2">

@@ -29,6 +29,7 @@ export interface Product {
   stockUnits?: number; // Total units in stock
   inStock: boolean; // "En Stock" | "Agotado"
   variants: ProductVariant[];
+  variantStock?: Record<string, boolean>; // e.g. { "verde moxie__m": true, "verde moxie__s": false }
   badge?: string;
   featured?: boolean;
 }
@@ -107,10 +108,13 @@ export interface StoreSettings {
   whatsappNumber: string; // International format without + (e.g., 584121234567)
   instagramUrl: string;
   tiktokUrl: string;
-  exchangeRateBs: number; // e.g., 58.50 Bs per 1 USD
+  exchangeRateBs: number; // e.g., 904.45 Bs per 1 USD (bcv.org.ve)
+  bcvAutoSync?: boolean; // Sincronización diaria automática con BCV
+  bcvLastUpdated?: string; // Fecha de actualización de la tasa BCV
+  bcvSource?: string; // Fuente de la tasa oficial
   categories: string[]; // Default ['Ropa', 'Accesorios']
   deliveryZones: DeliveryZone[];
-  adminPassword: string; // default "moxie"
+  adminPassword: string; // default "mooxiiee19*"
   announcement: string;
   showAnnouncement: boolean;
 }

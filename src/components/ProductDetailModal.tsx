@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, ShoppingBag, MessageCircle, Ruler, Truck, ShieldAlert, Sparkles } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { isVariantAvailable, isProductAvailable } from '../utils/variantHelpers';
 
 export const ProductDetailModal: React.FC = () => {
   const {
@@ -22,11 +23,33 @@ export const ProductDetailModal: React.FC = () => {
     if (activeProductModal) {
       setActiveImageIndex(0);
       const initial: Record<string, string> = {};
-      activeProductModal.variants?.forEach((v) => {
-        if (v.options.length > 0) {
-          initial[v.name] = v.options[0];
+      const colors = activeProductModal.variants?.find((v) => v.name.toLowerCase() === 'color')?.options || [];
+      const sizes = activeProductModal.variants?.find((v) => v.name.toLowerCase() === 'talla')?.options || [];
+
+      // Find first variant combination that is actually in stock
+      let foundAvailable = false;
+      if (colors.length > 0 && sizes.length > 0) {
+        for (const c of colors) {
+          for (const s of sizes) {
+            if (isVariantAvailable(activeProductModal, c, s)) {
+              initial['Color'] = c;
+              initial['Talla'] = s;
+              foundAvailable = true;
+              break;
+            }
+          }
+          if (foundAvailable) break;
         }
-      });
+      }
+
+      if (!foundAvailable) {
+        activeProductModal.variants?.forEach((v) => {
+          if (v.options.length > 0) {
+            initial[v.name] = v.options[0];
+          }
+        });
+      }
+
       setSelectedVariants(initial);
       setQuantity(1);
       setAddedSuccess(false);
@@ -46,11 +69,16 @@ export const ProductDetailModal: React.FC = () => {
   if (!activeProductModal) return null;
 
   const product = activeProductModal;
+  const isOverallInStock = isProductAvailable(product);
+  const selectedColor = selectedVariants['Color'] || '';
+  const selectedSize = selectedVariants['Talla'] || '';
+  const isCurrentVariantInStock = isVariantAvailable(product, selectedColor, selectedSize);
+
   const images = product.images?.length > 0 ? product.images : ['/src/assets/images/moxie_tshirt_black_1793892891603.jpg'];
   const activeImage = images[activeImageIndex] || images[0];
 
   const handleAddToCart = () => {
-    if (!product.inStock) return;
+    if (!isOverallInStock || !isCurrentVariantInStock) return;
     addToCart(product, quantity, selectedVariants);
     setAddedSuccess(true);
     setTimeout(() => {
@@ -110,7 +138,7 @@ export const ProductDetailModal: React.FC = () => {
 
               {/* In Stock Badge */}
               <div className="absolute top-3 left-3">
-                {product.inStock ? (
+                {isOverallInStock ? (
                   <span className="inline-flex items-center gap-1.5 bg-[#003314] text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded border border-[#005220] tracking-wider uppercase">
                     <span className="w-2 h-2 rounded-full bg-[#4ade80] animate-pulse" />
                     En Stock
@@ -217,49 +245,69 @@ export const ProductDetailModal: React.FC = () => {
               {/* Variant Selectors (Talla / Color) */}
               {product.variants && product.variants.length > 0 && (
                 <div className="space-y-4 mb-6">
-                  {product.variants.map((v) => (
-                    <div key={v.name}>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-mono uppercase font-bold text-neutral-300">
-                          {v.name}: <span className="text-white font-normal">{selectedVariants[v.name]}</span>
-                        </label>
+                  {product.variants.map((v) => {
+                    const isTalla = v.name.toLowerCase() === 'talla';
+                    const isColor = v.name.toLowerCase() === 'color';
 
-                        {/* Size guide trigger if variant is Talla */}
-                        {v.name.toLowerCase() === 'talla' && product.sizeGuide && (
-                          <button
-                            type="button"
-                            onClick={() => setShowSizeGuide(!showSizeGuide)}
-                            className="inline-flex items-center gap-1 text-[11px] font-mono text-[#4ade80] hover:underline cursor-pointer"
-                          >
-                            <Ruler className="w-3.5 h-3.5" />
-                            <span>{showSizeGuide ? 'Ocultar Medidas' : 'Guía de Tallas (cm)'}</span>
-                          </button>
-                        )}
-                      </div>
+                    return (
+                      <div key={v.name}>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-mono uppercase font-bold text-neutral-300">
+                            {v.name}: <span className="text-white font-normal">{selectedVariants[v.name]}</span>
+                          </label>
 
-                      <div className="flex flex-wrap gap-2">
-                        {v.options.map((opt) => {
-                          const isSelected = selectedVariants[v.name] === opt;
-                          return (
+                          {/* Size guide trigger if variant is Talla */}
+                          {isTalla && product.sizeGuide && (
                             <button
-                              key={opt}
                               type="button"
-                              onClick={() =>
-                                setSelectedVariants((prev) => ({ ...prev, [v.name]: opt }))
-                              }
-                              className={`px-3.5 py-1.5 text-xs font-mono font-bold rounded border transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'bg-white text-black border-white shadow-xs'
-                                  : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-600'
-                              }`}
+                              onClick={() => setShowSizeGuide(!showSizeGuide)}
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-[#4ade80] hover:underline cursor-pointer"
                             >
-                              {opt}
+                              <Ruler className="w-3.5 h-3.5" />
+                              <span>{showSizeGuide ? 'Ocultar Medidas' : 'Guía de Tallas (cm)'}</span>
                             </button>
-                          );
-                        })}
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {v.options.map((opt) => {
+                            const isSelected = selectedVariants[v.name] === opt;
+                            const inStock = isTalla
+                              ? isVariantAvailable(product, selectedColor, opt)
+                              : isColor
+                              ? isVariantAvailable(product, opt, selectedSize)
+                              : true;
+
+                            return (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedVariants((prev) => ({ ...prev, [v.name]: opt }))
+                                }
+                                className={`px-3.5 py-1.5 text-xs font-mono font-bold rounded border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? inStock
+                                      ? 'bg-white text-black border-white shadow-xs'
+                                      : 'bg-neutral-800 text-neutral-300 border-neutral-600 ring-1 ring-amber-500/50'
+                                    : inStock
+                                    ? 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-600'
+                                    : 'bg-neutral-900/60 text-neutral-500 border-neutral-800/80 hover:border-neutral-700'
+                                }`}
+                              >
+                                <span className={!inStock ? 'line-through' : ''}>{opt}</span>
+                                {!inStock && (
+                                  <span className="text-[9px] font-normal text-amber-400 no-underline">
+                                    (Agotado)
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -334,7 +382,7 @@ export const ProductDetailModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => q + 1)}
-                    disabled={!product.inStock}
+                    disabled={!isOverallInStock || !isCurrentVariantInStock}
                     className="px-3 py-2 text-sm text-neutral-400 hover:text-white disabled:opacity-40 cursor-pointer"
                   >
                     +
@@ -345,10 +393,10 @@ export const ProductDetailModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={!product.inStock}
+                  disabled={!isOverallInStock || !isCurrentVariantInStock}
                   className={`flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-md text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
-                    !product.inStock
-                      ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                    !isOverallInStock || !isCurrentVariantInStock
+                      ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
                       : addedSuccess
                       ? 'bg-[#005220] text-white'
                       : 'bg-white text-black hover:bg-neutral-200 active:scale-98'
@@ -359,8 +407,10 @@ export const ProductDetailModal: React.FC = () => {
                       <Check className="w-4 h-4" />
                       <span>¡Prenda en la Bolsa!</span>
                     </>
-                  ) : !product.inStock ? (
+                  ) : !isOverallInStock ? (
                     <span>Prenda Agotada</span>
+                  ) : !isCurrentVariantInStock ? (
+                    <span>Agotado en esta combinación</span>
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />

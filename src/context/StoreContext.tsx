@@ -59,6 +59,7 @@ interface StoreContextType {
   formatUSD: (amountUSD: number) => string;
   formatBs: (amountUSD: number) => string;
   formatDual: (amountUSD: number) => string;
+  syncBcvRate: () => Promise<{ success: boolean; rate?: number }>;
 
   // Cart
   cart: CartItem[];
@@ -569,7 +570,31 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // Currencies formatting
-  const exchangeRateBs = settings.exchangeRateBs || 58.5;
+  const exchangeRateBs = settings.exchangeRateBs || 904.45;
+
+  const syncBcvRate = async (): Promise<{ success: boolean; rate?: number }> => {
+    try {
+      const res = await fetch('/api/bcv/sync', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rate) {
+          setSettings((prev) => ({
+            ...prev,
+            exchangeRateBs: data.rate,
+            bcvLastUpdated: data.date,
+            bcvSource: data.source,
+          }));
+          showToast(`Tasa BCV oficial al día: ${data.rate} Bs/$ (bcv.org.ve)`, 'success');
+          return { success: true, rate: data.rate };
+        }
+      }
+      showToast('No se pudo sincronizar con BCV en este momento', 'error');
+      return { success: false };
+    } catch {
+      showToast('Error de conexión al sincronizar tasa BCV', 'error');
+      return { success: false };
+    }
+  };
 
   const formatUSD = (amountUSD: number): string => {
     const formatted = new Intl.NumberFormat('en-US', {
@@ -745,24 +770,31 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const totalUSD = cartSubtotalUSD + deliveryCostUSD;
     const totalBs = totalUSD * exchangeRateBs;
 
-    // Prendas seleccionadas
+    // Prendas seleccionadas: en las especificaciones solo talla y color (ropa) o únicamente color (accesorio)
     const itemsFormatted = cart
       .map((item) => {
-        const color = item.selectedVariants['Color'] || '';
-        const sizeOrDim = item.selectedVariants['Talla'] || item.selectedVariants['Medidas'] || '';
-        const specsList = [
-          sizeOrDim ? `Talla/Medidas: ${sizeOrDim}` : '',
-          item.product.widthCm && item.product.lengthCm ? `Ancho: ${item.product.widthCm}cm, Largo: ${item.product.lengthCm}cm` : '',
-          item.product.technicalSpecs && item.product.technicalSpecs.length > 0 ? item.product.technicalSpecs.join(', ') : '',
-        ].filter(Boolean);
+        const isAccessory =
+          item.product.category?.toLowerCase().includes('accesorio') ||
+          item.product.sizingType === 'accessory_dimensions';
 
-        const productNameWithColor = color
-          ? `${item.quantity}x ${item.product.name} (Color: ${color})`
-          : `${item.quantity}x ${item.product.name}`;
+        const color =
+          item.selectedVariants['Color'] ||
+          (item.product.colors && item.product.colors.length > 0 ? item.product.colors[0] : '');
+        const talla = item.selectedVariants['Talla'] || '';
 
-        const specsText = specsList.length > 0 ? specsList.join(' | ') : 'Estándar';
+        let specsText = '';
+        if (isAccessory) {
+          // Accesorio que no usa talla: únicamente el color
+          specsText = color ? `Color: ${color}` : 'Color único';
+        } else {
+          // Ropa: solo indica la talla y el color
+          const parts: string[] = [];
+          if (talla) parts.push(`Talla: ${talla}`);
+          if (color) parts.push(`Color: ${color}`);
+          specsText = parts.length > 0 ? parts.join(' | ') : 'Talla estándar';
+        }
 
-        return `- Producto: ${productNameWithColor}\n- Especificaciones: ${specsText}`;
+        return `- Producto: ${item.quantity}x ${item.product.name}\n- Especificaciones: ${specsText}`;
       })
       .join('\n\n');
 
@@ -852,6 +884,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         formatUSD,
         formatBs,
         formatDual,
+        syncBcvRate,
         cart,
         addToCart,
         removeFromCart,

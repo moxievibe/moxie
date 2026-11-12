@@ -3,6 +3,8 @@ import { Plus, Eye, Check } from 'lucide-react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 
+import { isProductAvailable } from '../utils/variantHelpers';
+
 interface ProductCardProps {
   product: Product;
 }
@@ -10,10 +12,11 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { setActiveProductModal, formatUSD, formatBs, addToCart } = useStore();
   const [isAdding, setIsAdding] = useState(false);
+  const available = isProductAvailable(product);
 
   const handleQuickClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!product.inStock) {
+    if (!available) {
       setActiveProductModal(product);
       return;
     }
@@ -40,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="relative aspect-[4/3] bg-neutral-950 overflow-hidden">
         {/* Availability Badge (Top Left) */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-          {product.inStock ? (
+          {available ? (
             <span className="inline-flex items-center gap-1 bg-[#003314] text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-[#005220] tracking-wider uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse" />
               En Stock
@@ -64,7 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           alt={product.name}
           referrerPolicy="no-referrer"
           className={`w-full h-full object-cover transition-transform duration-500 ease-out ${
-            product.inStock ? 'group-hover:scale-105' : 'opacity-60 grayscale'
+            available ? 'group-hover:scale-105' : 'opacity-60 grayscale'
           }`}
           loading="lazy"
         />
@@ -78,9 +81,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           <button
             onClick={handleQuickClick}
-            disabled={!product.inStock}
+            disabled={!available}
             className={`inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-all pointer-events-auto cursor-pointer ${
-              !product.inStock
+              !available
                 ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                 : isAdding
                 ? 'bg-[#005220] text-white'
@@ -95,7 +98,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             ) : (
               <>
                 <Plus className="w-3.5 h-3.5" />
-                <span>{product.inStock ? 'Elegir Talla' : 'Agotado'}</span>
+                <span>{available ? 'Elegir Talla' : 'Agotado'}</span>
               </>
             )}
           </button>
@@ -106,38 +109,39 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="p-4 flex-1 flex flex-col justify-between">
         <div>
           {/* Category & Tag */}
-          <div className="flex items-center justify-between text-[11px] font-mono tracking-wider uppercase text-neutral-400 mb-1">
+          <div className="flex items-center justify-between text-[11px] font-mono tracking-wider uppercase text-neutral-400 mb-1.5">
             <span>{product.category}</span>
             {product.variants?.find((v) => v.name.toLowerCase() === 'talla') && (
-              <span className="text-neutral-500">
+              <span className="text-neutral-500 font-normal">
                 Tallas: {product.variants.find((v) => v.name.toLowerCase() === 'talla')?.options.join(' · ')}
               </span>
             )}
           </div>
 
-          <h3 className="font-display text-base font-bold text-white group-hover:text-neutral-300 transition-colors line-clamp-1 uppercase tracking-tight">
+          {/* Refined Card Title: Streetwear identity with crisp, clear, lighter weight */}
+          <h3 className="card-product-title text-sm sm:text-base text-white group-hover:text-[#4ade80] transition-colors line-clamp-1">
             {product.name}
           </h3>
 
-          {/* Colors / Specs / Dimensions Summary */}
+          {/* Colors / Specs / Dimensions Summary with clean lighter typography */}
           {product.sizingType === 'accessory_dimensions' && product.widthCm && product.lengthCm ? (
-            <div className="mt-1 text-xs text-neutral-300 font-semibold">
+            <div className="mt-1 text-xs text-neutral-300 font-normal">
               Medidas: {product.widthCm} cm (Ancho) x {product.lengthCm} cm (Largo)
             </div>
           ) : null}
 
           {product.colors && product.colors.length > 0 && (
-            <div className="mt-1 text-[11px] text-neutral-400">
-              Colores: <span className="text-neutral-200 font-medium">{product.colors.join(' · ')}</span>
+            <div className="mt-1 text-[11px] text-neutral-400 font-normal">
+              Colores: <span className="text-neutral-300">{product.colors.join(' · ')}</span>
             </div>
           )}
 
           {product.technicalSpecs && product.technicalSpecs.length > 0 ? (
-            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
+            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed font-normal">
               {product.technicalSpecs.join(' · ')}
             </p>
           ) : product.description ? (
-            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
+            <p className="mt-1 text-xs text-neutral-400 line-clamp-2 leading-relaxed font-normal">
               {product.description}
             </p>
           ) : null}

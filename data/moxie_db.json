@@ -66,7 +66,18 @@
             "Negro Ébano"
           ]
         }
-      ]
+      ],
+      "variantStock": {
+        "verde moxie__s": true,
+        "verde moxie__m": true,
+        "verde moxie__l": false,
+        "verde moxie__xl": true,
+        "negro ébano__s": false,
+        "negro ébano__m": true,
+        "negro ébano__l": true,
+        "negro ébano__xl": true
+      },
+      "promoCashUSD": 42
     },
     {
       "id": "moxie-tee-01",
@@ -134,7 +145,22 @@
             "Verde Moxie"
           ]
         }
-      ]
+      ],
+      "variantStock": {
+        "negro intenso__s": true,
+        "negro intenso__m": true,
+        "negro intenso__l": true,
+        "negro intenso__xl": false,
+        "blanco óptico__s": false,
+        "blanco óptico__m": true,
+        "blanco óptico__l": true,
+        "blanco óptico__xl": true,
+        "verde moxie__s": true,
+        "verde moxie__m": true,
+        "verde moxie__l": false,
+        "verde moxie__xl": false
+      },
+      "promoCashUSD": 25
     },
     {
       "id": "moxie-track-jacket-01",
@@ -333,7 +359,10 @@
     "whatsappNumber": "584244578410",
     "instagramUrl": "https://instagram.com/moxievibe",
     "tiktokUrl": "https://tiktok.com/@moxievibee",
-    "exchangeRateBs": 58.5,
+    "exchangeRateBs": 904.45,
+    "bcvAutoSync": true,
+    "bcvLastUpdated": "2026-11-12T00:00:00-04:00",
+    "bcvSource": "Banco Central de Venezuela (bcv.org.ve)",
     "categories": [
       "Ropa",
       "Accesorios"
@@ -399,5 +428,5 @@
     }
   ],
   "orders": [],
-  "updatedAt": "2026-11-06T13:12:43.169Z"
+  "updatedAt": "2026-11-12T12:37:32.949Z"
 }
